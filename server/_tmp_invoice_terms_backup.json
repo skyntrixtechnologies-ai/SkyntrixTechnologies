@@ -1,0 +1,32 @@
+[
+  {
+    "invoiceNumber": "INV-2026-0015",
+    "_id": "6a73115f0264b3371a902e5a",
+    "terms": "Balance payable on milestone completion."
+  },
+  {
+    "invoiceNumber": "INV-2026-0016",
+    "_id": "6a73590d2548053cea3fac80",
+    "terms": "30% advance 30% milestone 40% final"
+  },
+  {
+    "invoiceNumber": "INV-2026-0017",
+    "_id": "6a7359f62548053cea3fad18",
+    "terms": "30% advance 30% milestone 40% final"
+  },
+  {
+    "invoiceNumber": "INV-2026-0018",
+    "_id": "6a7371dcdcbe0617a67747ee",
+    "terms": "30% advance 30% milestone 40% final"
+  },
+  {
+    "invoiceNumber": "INV-2026-0019",
+    "_id": "6a7377c148fb9d47d0b256ef",
+    "terms": "30% advance 30% milestone 40% final"
+  },
+  {
+    "invoiceNumber": "INV-2026-0020",
+    "_id": "6a7831ab39ad84c6f852f454",
+    "terms": "50% pay us a advance"
+  }
+]
