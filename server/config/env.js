@@ -62,7 +62,7 @@ export const env = {
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
     apiVersion: process.env.WHATSAPP_API_VERSION || "v19.0",
-    website: process.env.WHATSAPP_WEBSITE || "https://skyntrix.vercel.app/",
+    website: process.env.WHATSAPP_WEBSITE || "https://skyntrixtechnologies.in/",
     // Webhook verification token (set on the Meta dashboard) + optional App
     // Secret used to verify x-hub-signature-256 on incoming events.
     webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "",

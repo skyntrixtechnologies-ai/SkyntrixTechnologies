@@ -31,7 +31,7 @@ export const COMPANY = {
   email: "skyntrixtechnologies@gmail.com",
   phone: "+91 8925393946",
   phone2: "+91 9790586747",
-  website: env.whatsapp.website || "https://skyntrix.vercel.app/",
+  website: env.whatsapp.website || "https://skyntrixtechnologies.in/",
   address: "Madurai, Tamil Nadu, India",
   founder: "Senthil Kumar",
   founderTitle: "Founder",
@@ -493,7 +493,7 @@ const drawSignature = (doc) => {
   doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text("skyntrix.vercel.app", lx, y + pad + 54, { lineBreak: false });
+  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text("skyntrixtechnologies.in", lx, y + pad + 54, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 89253 93946", lx, y + pad + 66, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL

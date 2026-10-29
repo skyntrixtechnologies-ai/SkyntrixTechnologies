@@ -750,7 +750,7 @@ const drawSignature = (doc) => {
   doc.font(F.semibold).fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
   doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
   doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("skyntrix.vercel.app", lx, y + pad + 54, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("skyntrixtechnologies.in", lx, y + pad + 54, { lineBreak: false });
   doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 89253 93946", lx, y + pad + 66, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL

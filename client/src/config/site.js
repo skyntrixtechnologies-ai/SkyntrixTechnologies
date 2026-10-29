@@ -3,7 +3,7 @@ export const SITE = {
   shortName: "Skyntrix",
   tagline: "Turning Ideas into Digital Solutions",
   description: "Skyntrix Technologies provides professional website development, web applications, mobile apps, e-commerce, SEO, branding and digital marketing solutions for businesses in Madurai and across India.",
-  url: import.meta.env.VITE_SITE_URL || "https://skyntrix.vercel.app",
+  url: import.meta.env.VITE_SITE_URL || "https://skyntrixtechnologies.in",
   email: "skyntrixtechnologies@gmail.com",
   careersEmail: "careers@skyntrix.com",
   phone: "+91 8925393946",

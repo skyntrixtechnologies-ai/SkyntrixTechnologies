@@ -23,4 +23,4 @@ Disallow: /
 User-agent: Applebot-Extended
 Disallow: /
 
-Sitemap: https://skyntrix.vercel.app/sitemap.xml
+Sitemap: https://skyntrixtechnologies.in/sitemap.xml
