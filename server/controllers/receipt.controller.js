@@ -288,7 +288,11 @@ export const downloadReceipt = asyncHandler(async (req, res) => {
   const doc = await Receipt.findById(req.params.id);
   if (!doc) throw ApiError.notFound("Receipt not found");
 
-  await ensureReceiptPdf(doc);
+  // Always regenerate: a previously-generated file on disk can be stale
+  // relative to the current COMPANY config (e.g. a domain migration) even
+  // when the receipt's own fields haven't changed, and the response below
+  // is already marked no-store on the promise that downloads are never stale.
+  await ensureReceiptPdf(doc, { force: true });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${doc.receiptNumber}.pdf"`);

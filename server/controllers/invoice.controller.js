@@ -719,7 +719,11 @@ export const downloadInvoice = asyncHandler(async (req, res) => {
   const invoice = await Invoice.findById(req.params.id);
   if (!invoice) throw ApiError.notFound("Invoice not found");
 
-  await ensureInvoicePdf(invoice);
+  // Always regenerate: a previously-generated file on disk can be stale
+  // relative to the current COMPANY config (e.g. a domain migration) even
+  // when the invoice's own fields haven't changed, and the response below
+  // is already marked no-store on the promise that downloads are never stale.
+  await ensureInvoicePdf(invoice, { force: true });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${invoice.invoiceNumber}.pdf"`);

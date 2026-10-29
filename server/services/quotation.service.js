@@ -31,7 +31,7 @@ export const COMPANY = {
   email: "skyntrixtechnologies@gmail.com",
   phone: "+91 8925393946",
   phone2: "+91 9790586747",
-  website: env.whatsapp.website || "https://skyntrixtechnologies.in/",
+  website: env.whatsapp.website || `${env.siteUrl}/`,
   address: "Madurai, Tamil Nadu, India",
   founder: "Senthil Kumar",
   founderTitle: "Founder",
@@ -493,7 +493,8 @@ const drawSignature = (doc) => {
   doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text("skyntrixtechnologies.in", lx, y + pad + 54, { lineBreak: false });
+  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.website, lx, y + pad + 54, { lineBreak: false });
+  doc.link(lx, y + pad + 54, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
   doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 89253 93946", lx, y + pad + 66, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL
@@ -521,6 +522,7 @@ const drawFooter = (doc, pageIndex, totalPages) => {
   doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#E5E7EB").text(COMPANY.name, MARGIN, y, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor("#9CA3AF").text(COMPANY.address, MARGIN, y + 11, { lineBreak: false });
   doc.font("Helvetica").fontSize(7.5).fillColor("#D1D5DB").text(`${COMPANY.website}  |  ${COMPANY.email}  |  ${COMPANY.phone}`, MARGIN, y + 22, { lineBreak: false });
+  doc.link(MARGIN, y + 22, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
   const pageLabel = `Page ${pageIndex} of ${totalPages}`;
   doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#9CA3AF").text(pageLabel, PAGE_WIDTH - MARGIN - doc.widthOfString(pageLabel), y + 22, { lineBreak: false });
 };

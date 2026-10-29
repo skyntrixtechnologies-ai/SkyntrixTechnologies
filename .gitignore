@@ -12,3 +12,8 @@ coverage
 
 # Keep one example env committed
 !.env.example
+
+# Playwright E2E test output (reports, traces, downloaded test PDFs)
+tests/e2e/.output
+playwright-report
+test-results

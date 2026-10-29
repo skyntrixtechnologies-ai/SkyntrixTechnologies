@@ -25,7 +25,7 @@ export const SEND_LOG_STATUS_OPTIONS = [
   { value: "failed", label: "Failed" },
 ];
 
-export const WEBSITE_URL = "https://skyntrixtechnologies.in/";
+export const WEBSITE_URL = "https://www.skyntrixtechnologies.in/";
 
 
 /**

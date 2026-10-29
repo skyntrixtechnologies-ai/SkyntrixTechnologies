@@ -162,7 +162,9 @@ const handleInboundMessage = async (message, value) => {
   if (pendingInvoice) {
     const invoice = await Invoice.findById(pendingInvoice.invoiceId);
     if (!invoice) return;
-    await ensureInvoicePdf(invoice);
+    // Force regeneration: this PDF goes straight to the client, so it must
+    // never be a stale file left over from before a COMPANY config change.
+    await ensureInvoicePdf(invoice, { force: true });
     const result = await sendInvoiceFollowUp(invoice);
     await persistInvoiceWebhookFollowUp({ invoice, digits, result });
     return;
@@ -184,8 +186,10 @@ const handleInboundMessage = async (message, value) => {
   if (!quotation) return;
 
   // The client may have updated the quotation while the follow-up was pending,
-  // so make sure the latest PDF exists before sending it.
-  await ensureQuotationPdf(quotation);
+  // so make sure the latest PDF exists before sending it. Force regeneration:
+  // this PDF goes straight to the client, so it must never be a stale file
+  // left over from before a COMPANY config change.
+  await ensureQuotationPdf(quotation, { force: true });
 
   const result = await sendQuotationFollowUp(quotation);
   await persistWebhookFollowUp({ quotation, digits, result });

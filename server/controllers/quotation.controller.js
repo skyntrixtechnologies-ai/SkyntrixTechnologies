@@ -553,7 +553,11 @@ export const downloadQuotation = asyncHandler(async (req, res) => {
   const quotation = await Quotation.findById(req.params.id);
   if (!quotation) throw ApiError.notFound("Quotation not found");
 
-  await ensureQuotationPdf(quotation);
+  // Always regenerate: a previously-generated file on disk can be stale
+  // relative to the current COMPANY config (e.g. a domain migration) even
+  // when the quotation's own fields haven't changed, and the response below
+  // is already marked no-store on the promise that downloads are never stale.
+  await ensureQuotationPdf(quotation, { force: true });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${quotation.quotationNumber}.pdf"`);

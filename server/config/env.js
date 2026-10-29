@@ -7,6 +7,14 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const bool = (v) => v === "true";
 
+// SITE_URL is the single source of truth for the public marketing-site domain.
+// Every generated document (quotation/invoice/receipt PDFs) and WhatsApp
+// message must read this value (directly, or via env.whatsapp.website below)
+// instead of hardcoding the domain - that was the root cause of stale/old
+// domains surviving a migration. Never fall back to a third-party deployment
+// host (e.g. a *.vercel.app URL) here.
+const SITE_URL = (process.env.SITE_URL || "https://www.skyntrixtechnologies.in").replace(/\/+$/, "");
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT) || 5000,
@@ -20,6 +28,10 @@ export const env = {
   adminUrl: process.env.ADMIN_URL || "http://localhost:5173",
   apiPrefix: process.env.API_PREFIX || "/api",
   isProd: process.env.NODE_ENV === "production",
+  // Canonical public website URL (no trailing slash). Use this - or
+  // env.whatsapp.website, which defaults from it - everywhere a document or
+  // message needs to show/link the official site.
+  siteUrl: SITE_URL,
 
   mongodbUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/skyntrix",
   databaseUrl: process.env.DATABASE_URL || "",
@@ -62,7 +74,7 @@ export const env = {
     accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
     apiVersion: process.env.WHATSAPP_API_VERSION || "v19.0",
-    website: process.env.WHATSAPP_WEBSITE || "https://skyntrixtechnologies.in/",
+    website: process.env.WHATSAPP_WEBSITE || `${SITE_URL}/`,
     // Webhook verification token (set on the Meta dashboard) + optional App
     // Secret used to verify x-hub-signature-256 on incoming events.
     webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "",
