@@ -62,43 +62,43 @@ export const techGroups = [
   {
     title: "Frontend",
     items: [
-      { name: "React", icon: "react" },
-      { name: "Vite", icon: "vite" },
-      { name: "React Router", icon: "reactrouter" },
-      { name: "Redux Toolkit", icon: "redux" }
+      { name: "React", icon: "react", color: "#149ECA" },
+      { name: "Vite", icon: "vite", color: "#646CFF" },
+      { name: "React Router", icon: "reactrouter", color: "#CA4245" },
+      { name: "Redux Toolkit", icon: "redux", color: "#764ABC" }
     ]
   },
   {
     title: "Backend",
     items: [
-      { name: "Node.js", icon: "node" },
-      { name: "Express", icon: "express" },
-      { name: "JWT Auth", icon: "jwt" }
+      { name: "Node.js", icon: "node", color: "#3C873A" },
+      { name: "Express", icon: "express", color: "#2D2D2D" },
+      { name: "JWT Auth", icon: "jwt", color: "#D63AFF" }
     ]
   },
   {
     title: "Database",
     items: [
-      { name: "MongoDB", icon: "mongo" },
-      { name: "MySQL", icon: "mysql" },
-      { name: "Supabase", icon: "supabase" }
+      { name: "MongoDB", icon: "mongo", color: "#47A248" },
+      { name: "MySQL", icon: "mysql", color: "#4479A1" },
+      { name: "Supabase", icon: "supabase", color: "#3ECF8E" }
     ]
   },
   {
     title: "UI & Styling",
     items: [
-      { name: "Tailwind CSS", icon: "tailwind" },
-      { name: "Framer Motion", icon: "motion" },
-      { name: "Figma", icon: "figma" }
+      { name: "Tailwind CSS", icon: "tailwind", color: "#38BDF8" },
+      { name: "Framer Motion", icon: "motion", color: "#0055FF" },
+      { name: "Figma", icon: "figma", color: "#A259FF" }
     ]
   },
   {
     title: "Deployment & Integrations",
     items: [
-      { name: "Vercel", icon: "vercel" },
-      { name: "Cloudinary", icon: "cloudinary" },
-      { name: "Razorpay", icon: "razorpay" },
-      { name: "WhatsApp", icon: "whatsapp" }
+      { name: "Vercel", icon: "vercel", color: "#000000" },
+      { name: "Cloudinary", icon: "cloudinary", color: "#3448C5" },
+      { name: "Razorpay", icon: "razorpay", color: "#3395FF" },
+      { name: "WhatsApp", icon: "whatsapp", color: "#25D366" }
     ]
   }
 ];
@@ -401,7 +401,12 @@ export const blogCategories = ["All", "SEO", "Design", "Development", "Marketing
 export const heroContent = {
   eyebrow: { icon: "bolt", label: "Your Digital Growth Partner" },
   headlineLead: "Turning Your Ideas Into",
-  headlineGradient: "Powerful Digital Solutions.",
+  headlineWords: [
+    "Powerful Digital Solutions.",
+    "Scalable Web Platforms.",
+    "High-Impact Mobile Apps.",
+    "Smart Business Software."
+  ],
   description:
     "We design and develop modern websites, mobile applications and custom software that help businesses work smarter, serve customers better and grow faster.",
   primaryCta: { label: "Start Your Project", to: "consult" },
@@ -410,6 +415,11 @@ export const heroContent = {
     "Custom-built digital solutions",
     "Modern and scalable technology",
     "Business-focused development"
+  ],
+  stats: [
+    { value: "100%", label: "Client Satisfaction" },
+    { value: "24/7", label: "Support & Maintenance" },
+    { value: "Custom", label: "Built For Your Business" }
   ],
   // Used by the legacy DigitalEngine visual (no longer rendered on Home).
   growthCard: {

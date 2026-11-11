@@ -13,6 +13,7 @@ const links = [
   { to: "/portfolio", label: "Portfolio" },
   { to: "/pricing", label: "Pricing" },
   { to: "/blog", label: "Blog" },
+  { to: "/careers", label: "Careers" },
   { to: "/contact", label: "Contact" }
 ];
 

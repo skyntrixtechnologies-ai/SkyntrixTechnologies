@@ -33,6 +33,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const RECEIPTS_DIR = path.join(__dirname, "..", "uploads", "receipts");
 
+// Brand typography — same Inter family as quotation.service.js /
+// invoice.service.js so all three documents render with one type system.
+const FONT_DIR = path.join(__dirname, "..", "assets", "fonts");
+const FONT_FILES = {
+  regular: path.join(FONT_DIR, "Inter-Regular.ttf"),
+  medium: path.join(FONT_DIR, "Inter-Medium.ttf"),
+  semibold: path.join(FONT_DIR, "Inter-SemiBold.ttf"),
+  bold: path.join(FONT_DIR, "Inter-Bold.ttf"),
+};
+const HAS_INTER = Object.values(FONT_FILES).every((f) => fs.existsSync(f));
+const F = {
+  regular: HAS_INTER ? "Inter" : "Helvetica",
+  medium: HAS_INTER ? "Inter-Medium" : "Helvetica",
+  semibold: HAS_INTER ? "Inter-SemiBold" : "Helvetica-Bold",
+  bold: HAS_INTER ? "Inter-Bold" : "Helvetica-Bold",
+};
+const registerBrandFonts = (doc) => {
+  if (!HAS_INTER) return;
+  doc.registerFont(F.regular, FONT_FILES.regular);
+  doc.registerFont(F.medium, FONT_FILES.medium);
+  doc.registerFont(F.semibold, FONT_FILES.semibold);
+  doc.registerFont(F.bold, FONT_FILES.bold);
+};
+
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 // ---------------------------------------------------------------------------
@@ -174,7 +198,7 @@ const ensureSpace = (doc, height) => {
 const drawSectionTitle = (doc, title) => {
   ensureSpace(doc, SECTION_TITLE_HEIGHT);
   const y = doc.y;
-  doc.font("Helvetica-Bold").fontSize(10.5).fillColor(COLORS.ink).text(title.toUpperCase(), MARGIN, y, { width: CONTENT_WIDTH });
+  doc.font(F.bold).fontSize(10.5).fillColor(COLORS.ink).text(title.toUpperCase(), MARGIN, y, { width: CONTENT_WIDTH });
   doc.rect(MARGIN, y + 13, 26, 2.5).fillColor(COLORS.primary).fill();
   doc.moveTo(MARGIN, y + 19.5).lineTo(PAGE_WIDTH - MARGIN, y + 19.5).lineWidth(0.7).strokeColor(COLORS.border).stroke();
   doc.y = y + SECTION_TITLE_HEIGHT;
@@ -213,15 +237,19 @@ const drawHeader = (doc, receipt) => {
     logger.warn(`[Receipt] logo render skipped: ${err.message}`);
   }
 
-  doc.font("Helvetica-Bold").fontSize(17).fillColor(COLORS.white).text(COMPANY.name, 118, 34, { width: 240 });
-  doc.font("Helvetica").fontSize(8.5).fillColor("#C4B5FD").text(COMPANY.tagline, 118, 58, { width: 240 });
+  doc.font(F.bold).fontSize(17).fillColor(COLORS.white).text(COMPANY.name, 118, 34, { width: 240 });
+  doc.font(F.regular).fontSize(8.5).fillColor("#C4B5FD").text(COMPANY.tagline, 118, 58, { width: 240 });
 
-  doc.font("Helvetica-Bold").fontSize(15).fillColor(COLORS.white).text("PAYMENT RECEIPT", 340, 26, { width: 210, align: "right" });
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#E9D5FF").text(`No: ${receipt.receiptNumber}`, 340, 52, { width: 210, align: "right" });
-  doc.font("Helvetica").fontSize(8.5).fillColor("#A5B4FC").text(`Date: ${formatDate(receipt.paidOn)}`, 340, 68, { width: 210, align: "right" });
-  doc.font("Helvetica").fontSize(8.5).fillColor("#A5B4FC").text(`Time: ${formatDateTime(receipt.paidOn).split(",")[1] || ""}`, 340, 83, { width: 210, align: "right" });
-  doc.font("Helvetica-Bold").fontSize(8).fillColor("#34D399")
-    .text(`Status: ${String(receipt.paymentStatus || "paid").toUpperCase()}`, 340, 98, { width: 210, align: "right" });
+  doc.font(F.bold).fontSize(15).fillColor(COLORS.white).text("PAYMENT RECEIPT", 340, 20, { width: 210, align: "right", characterSpacing: 1.2 });
+  doc.font(F.bold).fontSize(9).fillColor("#E9D5FF").text(`No: ${receipt.receiptNumber}`, 340, 46, { width: 210, align: "right" });
+  doc.font(F.regular).fontSize(8.5).fillColor("#A5B4FC").text(`Date: ${formatDate(receipt.paidOn)}`, 340, 62, { width: 210, align: "right" });
+  doc.font(F.regular).fontSize(8.5).fillColor("#A5B4FC").text(`Time: ${formatDateTime(receipt.paidOn).split(",")[1] || ""}`, 340, 77, { width: 210, align: "right" });
+
+  const pillText = `PAYMENT ${String(receipt.paymentStatus || "paid").toUpperCase()}`;
+  const pillW = doc.font(F.semibold).fontSize(7.5).widthOfString(pillText) + 18;
+  doc.roundedRect(PAGE_WIDTH - MARGIN - pillW, 97, pillW, 15, 7.5).fillColor("#064E3B").fill();
+  doc.font(F.semibold).fontSize(7.5).fillColor("#6EE7B7")
+    .text(pillText, PAGE_WIDTH - MARGIN - pillW + 9, 99.5, { width: pillW - 18, align: "center", characterSpacing: 0.6 });
 };
 
 const drawInfoCard = (doc, receipt) => {
@@ -242,7 +270,7 @@ const drawInfoCard = (doc, receipt) => {
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, cardH, 6).fillColor(COLORS.light).fill();
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, cardH, 6).lineWidth(0.8).strokeColor(COLORS.border).stroke();
 
-  doc.font("Helvetica-Bold").fontSize(8).fillColor(COLORS.primary);
+  doc.font(F.bold).fontSize(8).fillColor(COLORS.primary);
   doc.text("CLIENT DETAILS", leftX, y + 10);
   doc.text("RECEIPT DETAILS", rightX, y + 10);
 
@@ -258,8 +286,8 @@ const drawInfoCard = (doc, receipt) => {
     const ry = y + titleH + i * rowH;
     pair.forEach(([label, value], col) => {
       const x = col === 0 ? leftX : rightX;
-      doc.font("Helvetica-Bold").fontSize(7).fillColor(COLORS.label).text(label, x, ry, { width: labelW, lineBreak: false });
-      doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.ink).text(String(value || "—"), x + labelW, ry, { width: valueW, lineBreak: false, ellipsis: true });
+      doc.font(F.bold).fontSize(7).fillColor(COLORS.label).text(label, x, ry, { width: labelW, lineBreak: false });
+      doc.font(F.regular).fontSize(8.5).fillColor(COLORS.ink).text(String(value || "—"), x + labelW, ry, { width: valueW, lineBreak: false, ellipsis: true });
     });
   });
 
@@ -269,13 +297,13 @@ const drawInfoCard = (doc, receipt) => {
 const drawProject = (doc, receipt) => {
   const desc = (receipt.projectDescription || "").trim();
   const nameH = 15;
-  const descH = desc ? doc.font("Helvetica").fontSize(9).heightOfString(desc, { width: CONTENT_WIDTH }) : 0;
+  const descH = desc ? doc.font(F.regular).fontSize(9).heightOfString(desc, { width: CONTENT_WIDTH }) : 0;
   ensureSpace(doc, SECTION_TITLE_HEIGHT + nameH + descH + SECTION_GAP);
   drawSectionTitle(doc, "Project");
   const y0 = doc.y;
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.ink).text(receipt.projectName, MARGIN, y0, { width: CONTENT_WIDTH });
+  doc.font(F.bold).fontSize(10).fillColor(COLORS.ink).text(receipt.projectName, MARGIN, y0, { width: CONTENT_WIDTH });
   if (desc) {
-    doc.font("Helvetica").fontSize(9).fillColor(COLORS.muted).text(desc, MARGIN, y0 + 15, { width: CONTENT_WIDTH, lineGap: 2 });
+    doc.font(F.regular).fontSize(9).fillColor(COLORS.muted).text(desc, MARGIN, y0 + 15, { width: CONTENT_WIDTH, lineGap: 2 });
     doc.y = y0 + 15 + descH + SECTION_GAP;
   } else {
     doc.y = y0 + nameH + SECTION_GAP;
@@ -291,11 +319,11 @@ const drawAmountReceived = (doc, receipt) => {
   doc.rect(MARGIN, y, CONTENT_WIDTH, boxH).fillColor(COLORS.ink).fill();
   doc.rect(MARGIN, y, CONTENT_WIDTH, 3).fillColor(COLORS.primary).fill();
 
-  doc.font("Helvetica").fontSize(9).fillColor("#C4B5FD").text("We confirm receipt of the following amount", MARGIN + 18, y + 14, { width: CONTENT_WIDTH - 36 });
-  doc.font("Helvetica-Bold").fontSize(26).fillColor(COLORS.white)
+  doc.font(F.regular).fontSize(9).fillColor("#C4B5FD").text("We confirm receipt of the following amount", MARGIN + 18, y + 14, { width: CONTENT_WIDTH - 36 });
+  doc.font(F.bold).fontSize(26).fillColor(COLORS.white)
     .text(formatMoney(receipt.amountReceived), MARGIN + 18, y + 28, { width: CONTENT_WIDTH - 36 });
 
-  doc.font("Helvetica").fontSize(9).fillColor("#A5B4FC")
+  doc.font(F.regular).fontSize(9).fillColor("#A5B4FC")
     .text(`Transaction ID / UTR: ${receipt.transactionId || "—"}`, MARGIN + 18, y + boxH - 20, { width: CONTENT_WIDTH - 36, align: "right" });
 
   doc.y = y + boxH + SECTION_GAP;
@@ -325,19 +353,19 @@ const drawPaymentSummary = (doc, receipt) => {
     if (isReceived) {
       doc.rect(boxX - 8, ry - 2, boxW + 8, rowH + 2).fillColor(COLORS.softPurple).fill();
     }
-    doc.font(isReceived ? "Helvetica-Bold" : "Helvetica").fontSize(8).fillColor(COLORS.muted)
+    doc.font(isReceived ? F.bold : F.regular).fontSize(8).fillColor(COLORS.muted)
       .text(label, boxX, ry + 3, { width: boxW - 130 });
-    doc.font("Helvetica-Bold").fontSize(8.5).fillColor(color)
+    doc.font(F.bold).fontSize(8.5).fillColor(color)
       .text(value, boxX + (boxW - 130), ry + 3, { width: 120, align: "right" });
   });
 
   const invoiceY = y0 + rows.length * rowH + 14;
   doc.rect(boxX - 8, invoiceY, boxW + 8, 24).fillColor(COLORS.light).fill();
   doc.rect(boxX - 8, invoiceY, boxW + 8, 24).lineWidth(0.8).strokeColor(COLORS.border).stroke();
-  doc.font("Helvetica").fontSize(8).fillColor(COLORS.muted).text("Paid on this invoice", boxX, invoiceY + 7, { width: boxW - 130 });
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.ink).text(formatMoney(receipt.amountPaidOnInvoice || 0), boxX + (boxW - 130), invoiceY + 6, { width: 120, align: "right" });
-  doc.font("Helvetica").fontSize(8).fillColor(COLORS.muted).text("Balance due on invoice", boxX, invoiceY + 14, { width: boxW - 130 });
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(receipt.balanceDueOnInvoice > 0 ? COLORS.danger : COLORS.success)
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.muted).text("Paid on this invoice", boxX, invoiceY + 7, { width: boxW - 130 });
+  doc.font(F.bold).fontSize(8.5).fillColor(COLORS.ink).text(formatMoney(receipt.amountPaidOnInvoice || 0), boxX + (boxW - 130), invoiceY + 6, { width: 120, align: "right" });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.muted).text("Balance due on invoice", boxX, invoiceY + 14, { width: boxW - 130 });
+  doc.font(F.bold).fontSize(8.5).fillColor(receipt.balanceDueOnInvoice > 0 ? COLORS.danger : COLORS.success)
     .text(formatMoney(receipt.balanceDueOnInvoice || 0), boxX + (boxW - 130), invoiceY + 13, { width: 120, align: "right" });
 
   doc.y = invoiceY + 24 + SECTION_GAP;
@@ -360,8 +388,8 @@ const drawPaymentDetails = (doc, receipt) => {
 
   rows.forEach(([label, value], i) => {
     const ry = y0 + i * rowH;
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(COLORS.label).text(label, MARGIN, ry + 3, { width: 170 });
-    doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.ink).text(String(value || "—"), MARGIN + 170, ry + 3, { width: CONTENT_WIDTH - 170 });
+    doc.font(F.bold).fontSize(8).fillColor(COLORS.label).text(label, MARGIN, ry + 3, { width: 170 });
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.ink).text(String(value || "—"), MARGIN + 170, ry + 3, { width: CONTENT_WIDTH - 170 });
   });
   doc.y = y0 + totalH + SECTION_GAP;
 };
@@ -369,10 +397,10 @@ const drawPaymentDetails = (doc, receipt) => {
 const drawNotes = (doc, receipt) => {
   const note = (receipt.note || "").trim();
   if (!note) return;
-  const noteH = doc.font("Helvetica").fontSize(8.5).heightOfString(note, { width: CONTENT_WIDTH }) + 16;
+  const noteH = doc.font(F.regular).fontSize(8.5).heightOfString(note, { width: CONTENT_WIDTH }) + 16;
   ensureSpace(doc, SECTION_TITLE_HEIGHT + noteH);
   drawSectionTitle(doc, "Notes");
-  doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.muted).text(note, MARGIN, doc.y, { width: CONTENT_WIDTH, lineGap: 2 });
+  doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text(note, MARGIN, doc.y, { width: CONTENT_WIDTH, lineGap: 2 });
   doc.y += noteH;
 };
 
@@ -380,7 +408,7 @@ const drawSealPlaceholder = (doc, x, y) => {
   const r = 22;
   doc.circle(x + r, y + r, r).lineWidth(1).dash(3, 3).strokeColor(COLORS.primary).stroke();
   doc.lineWidth(0).undash();
-  doc.font("Helvetica-Bold").fontSize(6.5).fillColor(COLORS.primary).text("COMPANY SEAL", x + 6, y + r - 4, { width: 32, align: "center" });
+  doc.font(F.bold).fontSize(6.5).fillColor(COLORS.primary).text("COMPANY SEAL", x + 6, y + r - 4, { width: 32, align: "center" });
 };
 
 const drawSignature = (doc, receipt) => {
@@ -389,29 +417,45 @@ const drawSignature = (doc, receipt) => {
   const rightW = 190;
 
   // Authorized signature on the right.
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.ink).text("For Skyntrix Technologies", rightX, y);
+  doc.font(F.bold).fontSize(8.5).fillColor(COLORS.ink).text("For Skyntrix Technologies", rightX, y);
   doc.moveTo(rightX, y + 32).lineTo(rightX + rightW, y + 32).lineWidth(1).strokeColor(COLORS.ink).stroke();
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.ink).text(COMPANY.founder, rightX, y + 38);
-  doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.muted).text(COMPANY.founderTitle, rightX, y + 52);
+  doc.font(F.bold).fontSize(10).fillColor(COLORS.ink).text(COMPANY.founder, rightX, y + 38);
+  doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text(COMPANY.founderTitle, rightX, y + 52);
 
   // Company seal placeholder on the left.
   drawSealPlaceholder(doc, MARGIN, y);
-  doc.font("Helvetica").fontSize(8).fillColor(COLORS.label).text("Received by", MARGIN + 60, y + 12, { width: 120 });
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.ink).text(receipt.generatedByName || "System", MARGIN + 60, y + 24, { width: 120 });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.label).text("Received by", MARGIN + 60, y + 12, { width: 120 });
+  doc.font(F.bold).fontSize(9).fillColor(COLORS.ink).text(receipt.generatedByName || "System", MARGIN + 60, y + 24, { width: 120 });
 
   doc.y = y + SIGNATURE_HEIGHT;
+};
+
+/**
+ * Large, faint diagonal stamp across the page — the same device a physical
+ * rubber stamp plays. Shared visual language with the quotation and invoice
+ * PDFs; a receipt is always stamped PAID since it only ever exists once a
+ * payment has cleared.
+ */
+const drawWatermark = (doc, text, color) => {
+  if (!text) return;
+  doc.save();
+  doc.opacity(0.07);
+  doc.font(F.bold).fontSize(92).fillColor(color);
+  doc.rotate(-32, { origin: [PAGE_WIDTH / 2, PAGE_HEIGHT / 2] });
+  doc.text(text, 0, PAGE_HEIGHT / 2 - 50, { width: PAGE_WIDTH, align: "center" });
+  doc.restore();
 };
 
 const drawFooter = (doc, pageIndex, totalPages) => {
   const y = PAGE_HEIGHT - 52;
   doc.rect(0, y - 12, PAGE_WIDTH, 46).fillColor("#111827").fill();
   doc.rect(0, y - 12, PAGE_WIDTH, 3).fillColor(COLORS.primary).fill();
-  doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#E5E7EB").text(COMPANY.name, MARGIN, y, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor("#9CA3AF").text(COMPANY.address, MARGIN, y + 11, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor("#D1D5DB").text(`${COMPANY.website}  |  ${COMPANY.email}  |  ${COMPANY.phone}`, MARGIN, y + 22, { lineBreak: false });
+  doc.font(F.bold).fontSize(7.5).fillColor("#E5E7EB").text(COMPANY.name, MARGIN, y, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor("#9CA3AF").text(COMPANY.address, MARGIN, y + 11, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor("#D1D5DB").text(`${COMPANY.website}  |  ${COMPANY.email}  |  ${COMPANY.phone}`, MARGIN, y + 22, { lineBreak: false });
   doc.link(MARGIN, y + 22, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
   const pageLabel = `Page ${pageIndex} of ${totalPages}`;
-  doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#9CA3AF").text(pageLabel, PAGE_WIDTH - MARGIN - doc.widthOfString(pageLabel), y + 22, { lineBreak: false });
+  doc.font(F.bold).fontSize(7.5).fillColor("#9CA3AF").text(pageLabel, PAGE_WIDTH - MARGIN - doc.widthOfString(pageLabel), y + 22, { lineBreak: false });
 };
 
 // ---------------------------------------------------------------------------
@@ -441,6 +485,7 @@ export const generateReceiptPdf = async (receipt) => {
       doc.on("error", reject);
 
       doc.pipe(stream);
+      registerBrandFonts(doc);
       drawHeader(doc, receipt);
       doc.y = 148;
 
@@ -457,6 +502,7 @@ export const generateReceiptPdf = async (receipt) => {
       const { count: totalPages } = doc.bufferedPageRange();
       for (let i = 0; i < totalPages; i += 1) {
         doc.switchToPage(i);
+        drawWatermark(doc, "PAID", "#047857");
         drawFooter(doc, i + 1, totalPages);
       }
       doc.switchToPage(totalPages - 1);

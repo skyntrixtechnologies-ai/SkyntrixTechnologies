@@ -60,4 +60,4 @@ export const whatsAppLink = (msg = "Hi Skyntrix Technologies! I'd like to discus
 
 export const telLink = (phone = SITE.phone) => `tel:+${phone.replace(/\D/g, "")}`;
 
-export const API_URL = (import.meta.env.VITE_API_URL || "https://skyntrix.onrender.com/api").replace(/\/$/, "");
+export const API_URL = (import.meta.env.VITE_API_URL || "https://skyntrixtechnologies.onrender.com/api").replace(/\/$/, "");

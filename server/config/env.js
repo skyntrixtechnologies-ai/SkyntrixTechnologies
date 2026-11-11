@@ -90,10 +90,18 @@ export const env = {
     receiptTemplateLang: process.env.WHATSAPP_RECEIPT_TEMPLATE_LANG || "en",
   },
 
-  corsOrigins: (process.env.CORS_ORIGINS || "http://localhost:5173")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean),
+  // Always allow the local Vite dev origin, even if CORS_ORIGINS on the
+  // deployed server was set to a production-only list - this is what lets
+  // a local admin build talk to the live backend during development.
+  corsOrigins: [
+    ...new Set([
+      "http://localhost:5173",
+      ...(process.env.CORS_ORIGINS || "")
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ]),
+  ],
 
   rateLimit: {
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,

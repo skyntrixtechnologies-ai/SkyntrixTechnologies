@@ -11,7 +11,7 @@ npm run android
 npm run ios
 ```
 
-By default the app talks to `https://skyntrix.onrender.com/api`. To point at a different backend
+By default the app talks to `https://skyntrixtechnologies.onrender.com/api`. To point at a different backend
 (e.g. a local server), set `EXPO_PUBLIC_API_URL` before starting:
 
 ```bash

@@ -21,6 +21,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "SKYNTRIX TECHNOLOGIES API is running!",
+    status: "Online",
+    version: "1.0.0"
+  });
+});
+
 // --- Security ----
 app.use(helmet());
 app.disable("x-powered-by");

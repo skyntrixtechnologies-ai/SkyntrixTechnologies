@@ -764,6 +764,22 @@ const drawSignature = (doc) => {
   doc.y = y + boxH + 6;
 };
 
+/**
+ * Large, faint diagonal stamp across the page — the same device a physical
+ * rubber stamp plays: a quiet, unmistakable status marker that never competes
+ * with the content underneath it. Shared visual language with the quotation
+ * and receipt PDFs.
+ */
+const drawWatermark = (doc, text, color) => {
+  if (!text) return;
+  doc.save();
+  doc.opacity(0.07);
+  doc.font(F.bold).fontSize(92).fillColor(color);
+  doc.rotate(-32, { origin: [PAGE_WIDTH / 2, PAGE_HEIGHT / 2] });
+  doc.text(text, 0, PAGE_HEIGHT / 2 - 50, { width: PAGE_WIDTH, align: "center" });
+  doc.restore();
+};
+
 const drawFooter = (doc, pageIndex, totalPages) => {
   const y = PAGE_HEIGHT - 52;
   doc.rect(0, y - 12, PAGE_WIDTH, 46).fillColor("#111827").fill();
@@ -831,9 +847,17 @@ export const generateInvoicePdf = async (invoice) => {
       drawTerms(doc, invoice);
       drawSignature(doc);
 
+      const stamp = invoice.status === "cancelled"
+        ? { text: "CANCELLED", color: "#B91C1C" }
+        : invoice.paymentStatus === "paid"
+        ? { text: "PAID", color: "#047857" }
+        : invoice.paymentStatus === "overdue"
+        ? { text: "OVERDUE", color: "#B91C1C" }
+        : null;
       const { count: totalPages } = doc.bufferedPageRange();
       for (let i = 0; i < totalPages; i += 1) {
         doc.switchToPage(i);
+        if (stamp) drawWatermark(doc, stamp.text, stamp.color);
         drawFooter(doc, i + 1, totalPages);
       }
       doc.switchToPage(totalPages - 1);

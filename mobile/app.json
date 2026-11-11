@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "scheme": "skyntrixadmin",
     "extra": {
-      "apiUrl": "https://skyntrix.onrender.com/api"
+      "apiUrl": "https://skyntrixtechnologies.onrender.com/api"
     },
     "ios": {
       "supportsTablet": true

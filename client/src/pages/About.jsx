@@ -1,5 +1,6 @@
 import Seo from "../components/Seo";
 import PageHero from "../components/PageHero";
+import HeroCinematicArt from "../components/HeroCinematicArt";
 import Reveal from "../components/Reveal";
 import SectionHeading from "../components/SectionHeading";
 import Stats from "../sections/Stats";
@@ -42,7 +43,12 @@ export default function About() {
           "Web Development Company in Tamil Nadu"
         ]}
       />
-      <PageHero title="About Skyntrix" subtitle="The people, craft and values behind the brands we grow." crumb="About" />
+      <PageHero
+        title="About Skyntrix"
+        subtitle="The people, craft and values behind the brands we grow."
+        crumb="About"
+        art={<HeroCinematicArt />}
+      />
 
       {/* Story + Mission */}
       <section className="section-pad bg-base">

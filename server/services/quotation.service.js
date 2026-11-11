@@ -23,6 +23,47 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const QUOTES_DIR = path.join(__dirname, "..", "uploads", "quotes");
 export const LOGO_PATH = path.join(__dirname, "..", "assets", "logo.png");
 
+// Brand typography. Inter static TTFs ship under server/assets/fonts; falls
+// back to Helvetica so a PDF can never fail to render if the assets are ever
+// missing. Shared with invoice.service.js / receipt.service.js so all three
+// documents render with the same type family.
+const FONT_DIR = path.join(__dirname, "..", "assets", "fonts");
+const FONT_FILES = {
+  regular: path.join(FONT_DIR, "Inter-Regular.ttf"),
+  medium: path.join(FONT_DIR, "Inter-Medium.ttf"),
+  semibold: path.join(FONT_DIR, "Inter-SemiBold.ttf"),
+  bold: path.join(FONT_DIR, "Inter-Bold.ttf"),
+};
+const HAS_INTER = Object.values(FONT_FILES).every((f) => fs.existsSync(f));
+const F = {
+  regular: HAS_INTER ? "Inter" : "Helvetica",
+  medium: HAS_INTER ? "Inter-Medium" : "Helvetica",
+  semibold: HAS_INTER ? "Inter-SemiBold" : "Helvetica-Bold",
+  bold: HAS_INTER ? "Inter-Bold" : "Helvetica-Bold",
+};
+const registerBrandFonts = (doc) => {
+  if (!HAS_INTER) return;
+  doc.registerFont(F.regular, FONT_FILES.regular);
+  doc.registerFont(F.medium, FONT_FILES.medium);
+  doc.registerFont(F.semibold, FONT_FILES.semibold);
+  doc.registerFont(F.bold, FONT_FILES.bold);
+};
+
+/**
+ * Large, faint diagonal stamp across the page — the same device a physical
+ * rubber stamp plays: a quiet, unmistakable status marker that never competes
+ * with the content underneath it.
+ */
+const drawWatermark = (doc, text, color) => {
+  if (!text) return;
+  doc.save();
+  doc.opacity(0.07);
+  doc.font(F.bold).fontSize(92).fillColor(color);
+  doc.rotate(-32, { origin: [PAGE_WIDTH / 2, PAGE_HEIGHT / 2] });
+  doc.text(text, 0, PAGE_HEIGHT / 2 - 50, { width: PAGE_WIDTH, align: "center" });
+  doc.restore();
+};
+
 /** Static company details used across the PDF and WhatsApp message. */
 export const COMPANY = {
   name: "Skyntrix Technologies",
@@ -240,7 +281,7 @@ const ensureSpace = (doc, height) => {
 const drawSectionTitle = (doc, title) => {
   ensureSpace(doc, SECTION_TITLE_HEIGHT);
   const y = doc.y;
-  doc.font("Helvetica-Bold").fontSize(10.5).fillColor(COLORS.ink).text(title.toUpperCase(), MARGIN, y, { width: CONTENT_WIDTH });
+  doc.font(F.bold).fontSize(10.5).fillColor(COLORS.ink).text(title.toUpperCase(), MARGIN, y, { width: CONTENT_WIDTH });
   doc.rect(MARGIN, y + 13, 26, 2.5).fillColor(COLORS.primary).fill();
   doc.moveTo(MARGIN, y + 19.5).lineTo(PAGE_WIDTH - MARGIN, y + 19.5).lineWidth(0.7).strokeColor(COLORS.border).stroke();
   doc.y = y + SECTION_TITLE_HEIGHT;
@@ -258,12 +299,23 @@ const drawHeader = (doc, quotation) => {
     logger.warn(`[Quotation] logo render skipped: ${err.message}`);
   }
 
-  doc.font("Helvetica-Bold").fontSize(17).fillColor(COLORS.white).text(COMPANY.name, 118, 34, { width: 240 });
-  doc.font("Helvetica").fontSize(8.5).fillColor("#C4B5FD").text(COMPANY.tagline, 118, 58, { width: 240 });
+  doc.font(F.bold).fontSize(17).fillColor(COLORS.white).text(COMPANY.name, 118, 34, { width: 240 });
+  doc.font(F.regular).fontSize(8.5).fillColor("#C4B5FD").text(COMPANY.tagline, 118, 58, { width: 240 });
 
-  doc.font("Helvetica-Bold").fontSize(15).fillColor(COLORS.white).text("QUOTATION", 340, 30, { width: 210, align: "right" });
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#E9D5FF").text(`No: ${quotation.quotationNumber}`, 340, 56, { width: 210, align: "right" });
-  doc.font("Helvetica").fontSize(8.5).fillColor("#A5B4FC").text(`Date: ${formatDate(quotation.createdAt || new Date())}`, 340, 72, { width: 210, align: "right" });
+  doc.font(F.bold).fontSize(15).fillColor(COLORS.white).text("QUOTATION", 340, 24, { width: 210, align: "right", characterSpacing: 1.5 });
+  doc.font(F.bold).fontSize(9).fillColor("#E9D5FF").text(`No: ${quotation.quotationNumber}`, 340, 50, { width: 210, align: "right" });
+  doc.font(F.regular).fontSize(8.5).fillColor("#A5B4FC").text(`Date: ${formatDate(quotation.createdAt || new Date())}`, 340, 66, { width: 210, align: "right" });
+
+  const pillCfg = {
+    accepted: { bg: "#064E3B", fg: "#6EE7B7", text: "ACCEPTED" },
+    rejected: { bg: "#7F1D1D", fg: "#FCA5A5", text: "DECLINED" },
+    pending: { bg: "#1E293B", fg: "#FDE68A", text: "AWAITING REVIEW" },
+  };
+  const cfg = pillCfg[quotation.acceptanceStatus] || pillCfg.pending;
+  const pillW = doc.font(F.semibold).fontSize(7.5).widthOfString(cfg.text) + 18;
+  doc.roundedRect(PAGE_WIDTH - MARGIN - pillW, 97, pillW, 15, 7.5).fillColor(cfg.bg).fill();
+  doc.font(F.semibold).fontSize(7.5).fillColor(cfg.fg)
+    .text(cfg.text, PAGE_WIDTH - MARGIN - pillW + 9, 99.5, { width: pillW - 18, align: "center", characterSpacing: 0.6 });
 };
 
 /** Format an E.164 Indian mobile number as "+91 XXXXX XXXXX" for display. */
@@ -298,7 +350,7 @@ const drawInfoCard = (doc, quotation) => {
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, cardH, 6).fillColor(COLORS.light).fill();
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, cardH, 6).lineWidth(0.8).strokeColor(COLORS.border).stroke();
 
-  doc.font("Helvetica-Bold").fontSize(8).fillColor(COLORS.primary);
+  doc.font(F.bold).fontSize(8).fillColor(COLORS.primary);
   doc.text("CLIENT DETAILS", leftX, y + 10);
   doc.text("PROJECT DETAILS", rightX, y + 10);
 
@@ -313,8 +365,8 @@ const drawInfoCard = (doc, quotation) => {
     const ry = y + titleH + i * rowH;
     pair.forEach(([label, value], col) => {
       const x = col === 0 ? leftX : rightX;
-      doc.font("Helvetica-Bold").fontSize(7).fillColor(COLORS.label).text(label, x, ry, { width: labelW, lineBreak: false });
-      doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.ink).text(String(value || "—"), x + labelW, ry, { width: valueW, lineBreak: false, ellipsis: true });
+      doc.font(F.bold).fontSize(7).fillColor(COLORS.label).text(label, x, ry, { width: labelW, lineBreak: false });
+      doc.font(F.regular).fontSize(8.5).fillColor(COLORS.ink).text(String(value || "—"), x + labelW, ry, { width: valueW, lineBreak: false, ellipsis: true });
     });
   });
 
@@ -323,20 +375,20 @@ const drawInfoCard = (doc, quotation) => {
 
 const drawScope = (doc, quotation) => {
   const desc = (quotation.projectDescription || "No additional description provided.").trim();
-  const descH = doc.font("Helvetica").fontSize(9).heightOfString(desc, { width: CONTENT_WIDTH });
+  const descH = doc.font(F.regular).fontSize(9).heightOfString(desc, { width: CONTENT_WIDTH });
   const nameH = 15;
   ensureSpace(doc, SECTION_TITLE_HEIGHT + nameH + descH + SECTION_GAP);
   drawSectionTitle(doc, "Project Scope");
   const y0 = doc.y;
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.ink).text(quotation.projectName, MARGIN, y0, { width: CONTENT_WIDTH });
-  doc.font("Helvetica").fontSize(9).fillColor(COLORS.muted).text(desc, MARGIN, y0 + 15, { width: CONTENT_WIDTH, lineGap: 2 });
+  doc.font(F.bold).fontSize(10).fillColor(COLORS.ink).text(quotation.projectName, MARGIN, y0, { width: CONTENT_WIDTH });
+  doc.font(F.regular).fontSize(9).fillColor(COLORS.muted).text(desc, MARGIN, y0 + 15, { width: CONTENT_WIDTH, lineGap: 2 });
   doc.y = y0 + 15 + descH + SECTION_GAP;
 };
 
 const drawTableHeader = (doc, widths, y) => {
   const rowStart = MARGIN;
   doc.rect(rowStart, y, CONTENT_WIDTH, 20).fillColor(COLORS.ink).fill();
-  doc.font("Helvetica-Bold").fontSize(8).fillColor(COLORS.white);
+  doc.font(F.bold).fontSize(8).fillColor(COLORS.white);
   doc.text("#", rowStart + 8, y + 6, { width: 20 });
   doc.text("SERVICE", rowStart + widths[0] + 6, y + 6, { width: widths[1] - 12 });
   doc.text("DESCRIPTION", rowStart + widths[0] + widths[1] + 6, y + 6, { width: widths[2] - 12 });
@@ -347,7 +399,7 @@ const drawCostTable = (doc, quotation) => {
   const widths = [30, 155, 220, 100];
   const rowStart = MARGIN;
   const services = (quotation.services || []).filter((s) => s && s.name);
-  const cellHeight = (desc) => Math.max(22, doc.font("Helvetica").fontSize(8).heightOfString(desc, { width: widths[2] - 12 }) + 12);
+  const cellHeight = (desc) => Math.max(22, doc.font(F.regular).fontSize(8).heightOfString(desc, { width: widths[2] - 12 }) + 12);
   const rowHeights = services.length ? services.map((s) => cellHeight((s.description || "").trim() || "—")) : [22];
   const tableH = SECTION_TITLE_HEIGHT + 20 + rowHeights.reduce((a, b) => a + b, 0) + 26 + 6;
   // If the whole table cannot fit on the current page, move the title with it.
@@ -361,7 +413,7 @@ const drawCostTable = (doc, quotation) => {
   if (!services.length) {
     doc.rect(rowStart, cy, CONTENT_WIDTH, 22).fillColor(COLORS.white).fill();
     doc.rect(rowStart, cy, CONTENT_WIDTH, 22).lineWidth(0.6).strokeColor(COLORS.border).stroke();
-    doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.muted).text("No line items listed", rowStart + widths[0] + 6, cy + 7, { width: CONTENT_WIDTH - 40 });
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text("No line items listed", rowStart + widths[0] + 6, cy + 7, { width: CONTENT_WIDTH - 40 });
     cy += 22;
   } else {
     services.forEach((service, i) => {
@@ -376,10 +428,10 @@ const drawCostTable = (doc, quotation) => {
       doc.rect(rowStart, cy, CONTENT_WIDTH, cellH)
         .fillColor(i % 2 === 0 ? COLORS.light : COLORS.white).fill();
       doc.rect(rowStart, cy, CONTENT_WIDTH, cellH).lineWidth(0.6).strokeColor(COLORS.border).stroke();
-      doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.muted).text(String(i + 1), rowStart + 8, cy + 5, { width: 20 });
-      doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.ink).text(service.name, rowStart + widths[0] + 6, cy + 5, { width: widths[1] - 12 });
-      doc.font("Helvetica").fontSize(8).fillColor(COLORS.muted).text(desc, rowStart + widths[0] + widths[1] + 6, cy + 5, { width: widths[2] - 12, lineGap: 1 });
-      doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.ink).text(formatMoney(service.amount), rowStart + widths[0] + widths[1] + widths[2] + 6, cy + 5, { width: widths[3] - 12, align: "right" });
+      doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text(String(i + 1), rowStart + 8, cy + 5, { width: 20 });
+      doc.font(F.bold).fontSize(8.5).fillColor(COLORS.ink).text(service.name, rowStart + widths[0] + 6, cy + 5, { width: widths[1] - 12 });
+      doc.font(F.regular).fontSize(8).fillColor(COLORS.muted).text(desc, rowStart + widths[0] + widths[1] + 6, cy + 5, { width: widths[2] - 12, lineGap: 1 });
+      doc.font(F.bold).fontSize(8.5).fillColor(COLORS.ink).text(formatMoney(service.amount), rowStart + widths[0] + widths[1] + widths[2] + 6, cy + 5, { width: widths[3] - 12, align: "right" });
       cy += cellH;
     });
   }
@@ -392,8 +444,8 @@ const drawCostTable = (doc, quotation) => {
     cy = headerY + 20;
   }
   doc.rect(rowStart, cy, CONTENT_WIDTH, 26).fillColor(COLORS.softPurple).fill();
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.ink).text("GRAND TOTAL", rowStart + 12, cy + 7, { width: 200 });
-  doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.primary).text(formatMoney(total), rowStart + CONTENT_WIDTH - 200, cy + 5, { width: 188, align: "right" });
+  doc.font(F.bold).fontSize(10).fillColor(COLORS.ink).text("GRAND TOTAL", rowStart + 12, cy + 7, { width: 200 });
+  doc.font(F.bold).fontSize(11).fillColor(COLORS.primary).text(formatMoney(total), rowStart + CONTENT_WIDTH - 200, cy + 5, { width: 188, align: "right" });
 
   doc.y = cy + 26 + SECTION_GAP;
 };
@@ -413,8 +465,8 @@ const drawPaymentBoxes = (doc, quotation) => {
     const x = MARGIN + i * (boxW + 12);
     doc.roundedRect(x, y0, boxW, boxH, 6).fillColor(COLORS.light).fill();
     doc.roundedRect(x, y0, boxW, boxH, 6).lineWidth(0.8).strokeColor(COLORS.border).stroke();
-    doc.font("Helvetica-Bold").fontSize(7.5).fillColor(COLORS.primary).text(title.toUpperCase(), x + 10, y0 + 8, { width: boxW - 20 });
-    doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.ink).text(value, x + 10, y0 + 24, { width: boxW - 20, lineGap: 1 });
+    doc.font(F.bold).fontSize(7.5).fillColor(COLORS.primary).text(title.toUpperCase(), x + 10, y0 + 8, { width: boxW - 20 });
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.ink).text(value, x + 10, y0 + 24, { width: boxW - 20, lineGap: 1 });
   });
   doc.y = y0 + boxH + SECTION_GAP;
 };
@@ -434,38 +486,38 @@ const TERM_GAP = 6;
 const drawTermItem = (doc, item) => {
   if (item.type === "bullet") {
     const width = CONTENT_WIDTH - TERM_BULLET_INDENT;
-    const itemH = doc.font("Helvetica").fontSize(TERM_BULLET_FONT).heightOfString(item.text, { width });
+    const itemH = doc.font(F.regular).fontSize(TERM_BULLET_FONT).heightOfString(item.text, { width });
     ensureSpace(doc, itemH + 2);
     const y = doc.y;
-    doc.font("Helvetica").fontSize(TERM_BULLET_FONT).fillColor(COLORS.primary).text("\u2022", MARGIN + TERM_BODY_INDENT, y, { width: 10, lineBreak: false });
-    doc.font("Helvetica").fontSize(TERM_BULLET_FONT).fillColor(COLORS.muted).text(item.text, MARGIN + TERM_BULLET_INDENT, y, { width, lineGap: 1 });
+    doc.font(F.regular).fontSize(TERM_BULLET_FONT).fillColor(COLORS.primary).text("\u2022", MARGIN + TERM_BODY_INDENT, y, { width: 10, lineBreak: false });
+    doc.font(F.regular).fontSize(TERM_BULLET_FONT).fillColor(COLORS.muted).text(item.text, MARGIN + TERM_BULLET_INDENT, y, { width, lineGap: 1 });
     doc.y = y + itemH + 2;
     return;
   }
-  const itemH = doc.font("Helvetica").fontSize(TERM_BODY_FONT).heightOfString(item.text, { width: CONTENT_WIDTH });
+  const itemH = doc.font(F.regular).fontSize(TERM_BODY_FONT).heightOfString(item.text, { width: CONTENT_WIDTH });
   ensureSpace(doc, itemH + 2);
   const y = doc.y;
-  doc.font("Helvetica").fontSize(TERM_BODY_FONT).fillColor(COLORS.muted).text(item.text, MARGIN, y, { width: CONTENT_WIDTH, lineGap: 1 });
+  doc.font(F.regular).fontSize(TERM_BODY_FONT).fillColor(COLORS.muted).text(item.text, MARGIN, y, { width: CONTENT_WIDTH, lineGap: 1 });
   doc.y = y + itemH + 2;
 };
 
 const drawTerms = (doc, quotation) => {
   drawSectionTitle(doc, "Terms & Conditions");
   QUOTATION_TERMS.forEach((term) => {
-    const headingH = doc.font("Helvetica-Bold").fontSize(TERM_HEADING_FONT).heightOfString(term.heading, { width: CONTENT_WIDTH });
+    const headingH = doc.font(F.bold).fontSize(TERM_HEADING_FONT).heightOfString(term.heading, { width: CONTENT_WIDTH });
     ensureSpace(doc, headingH + 3);
     const hy = doc.y;
-    doc.font("Helvetica-Bold").fontSize(TERM_HEADING_FONT).fillColor(COLORS.primary).text(term.heading, MARGIN, hy, { width: CONTENT_WIDTH });
+    doc.font(F.bold).fontSize(TERM_HEADING_FONT).fillColor(COLORS.primary).text(term.heading, MARGIN, hy, { width: CONTENT_WIDTH });
     doc.y = hy + headingH + 3;
     term.items.forEach((item) => drawTermItem(doc, item));
     doc.y += TERM_GAP;
   });
   if (quotation.additionalNotes) {
-    const notesH = doc.font("Helvetica").fontSize(8.5).heightOfString(quotation.additionalNotes, { width: CONTENT_WIDTH });
+    const notesH = doc.font(F.regular).fontSize(8.5).heightOfString(quotation.additionalNotes, { width: CONTENT_WIDTH });
     doc.y += 4;
     const y = doc.y;
-    doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.ink).text("Additional Notes", MARGIN, y);
-    doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.muted).text(quotation.additionalNotes, MARGIN, y + 12, { width: CONTENT_WIDTH, lineGap: 1 });
+    doc.font(F.bold).fontSize(8.5).fillColor(COLORS.ink).text("Additional Notes", MARGIN, y);
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text(quotation.additionalNotes, MARGIN, y + 12, { width: CONTENT_WIDTH, lineGap: 1 });
     doc.y = y + notesH + 16;
   }
 };
@@ -490,19 +542,19 @@ const drawSignature = (doc) => {
 
   // LEFT — COMPANY DETAILS
   const lx = boxX + pad;
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.website, lx, y + pad + 54, { lineBreak: false });
+  doc.font(F.bold).fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.website, lx, y + pad + 54, { lineBreak: false });
   doc.link(lx, y + pad + 54, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 89253 93946", lx, y + pad + 66, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 89253 93946", lx, y + pad + 66, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL
   const rx = dividerX + pad;
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.primary).text("CLIENT APPROVAL", rx, y + pad, { lineBreak: false });
-  doc.font("Helvetica").fontSize(8).fillColor(COLORS.ink).text("Name: ______________________", rx, y + pad + 26, { lineBreak: false });
-  doc.font("Helvetica").fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", rx, y + pad + 48, { lineBreak: false });
-  doc.font("Helvetica").fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", rx, y + pad + 70, { lineBreak: false });
+  doc.font(F.bold).fontSize(8.5).fillColor(COLORS.primary).text("CLIENT APPROVAL", rx, y + pad, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Name: ______________________", rx, y + pad + 26, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", rx, y + pad + 48, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", rx, y + pad + 70, { lineBreak: false });
 
   doc.y = y + boxH + 6;
 };
@@ -519,12 +571,12 @@ const drawFooter = (doc, pageIndex, totalPages) => {
   // lineBreak:false AND no width -> bypasses the LineWrapper entirely. A width
   // (or width auto-set) forces text through LineWrapper, whose auto page-break
   // check sees the footer below the bottom margin and adds a page, recursing.
-  doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#E5E7EB").text(COMPANY.name, MARGIN, y, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor("#9CA3AF").text(COMPANY.address, MARGIN, y + 11, { lineBreak: false });
-  doc.font("Helvetica").fontSize(7.5).fillColor("#D1D5DB").text(`${COMPANY.website}  |  ${COMPANY.email}  |  ${COMPANY.phone}`, MARGIN, y + 22, { lineBreak: false });
+  doc.font(F.bold).fontSize(7.5).fillColor("#E5E7EB").text(COMPANY.name, MARGIN, y, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor("#9CA3AF").text(COMPANY.address, MARGIN, y + 11, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor("#D1D5DB").text(`${COMPANY.website}  |  ${COMPANY.email}  |  ${COMPANY.phone}`, MARGIN, y + 22, { lineBreak: false });
   doc.link(MARGIN, y + 22, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
   const pageLabel = `Page ${pageIndex} of ${totalPages}`;
-  doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#9CA3AF").text(pageLabel, PAGE_WIDTH - MARGIN - doc.widthOfString(pageLabel), y + 22, { lineBreak: false });
+  doc.font(F.bold).fontSize(7.5).fillColor("#9CA3AF").text(pageLabel, PAGE_WIDTH - MARGIN - doc.widthOfString(pageLabel), y + 22, { lineBreak: false });
 };
 
 // ---------------------------------------------------------------------------
@@ -564,6 +616,7 @@ export const generateQuotationPdf = async (quotation) => {
       doc.on("error", reject);
 
       doc.pipe(stream);
+      registerBrandFonts(doc);
       drawHeader(doc, quotation);
       doc.y = 148;
 
@@ -576,12 +629,18 @@ export const generateQuotationPdf = async (quotation) => {
       ensureSpace(doc, SIGNATURE_HEIGHT);
       drawSignature(doc);
 
-      // Footers are drawn after all content is laid out so the total page count
-      // is known and "Page X of Y" can be rendered on every page. The footer is
-      // always positioned at the bottom via fixed coordinates.
+      // Footers (and, where relevant, the accepted/declined stamp) are drawn
+      // after all content is laid out so the total page count is known and
+      // "Page X of Y" can be rendered on every page.
+      const stamp = quotation.acceptanceStatus === "accepted"
+        ? { text: "ACCEPTED", color: "#047857" }
+        : quotation.acceptanceStatus === "rejected"
+        ? { text: "DECLINED", color: "#B91C1C" }
+        : null;
       const { count: totalPages } = doc.bufferedPageRange();
       for (let i = 0; i < totalPages; i += 1) {
         doc.switchToPage(i);
+        if (stamp) drawWatermark(doc, stamp.text, stamp.color);
         drawFooter(doc, i + 1, totalPages);
       }
       doc.switchToPage(totalPages - 1);

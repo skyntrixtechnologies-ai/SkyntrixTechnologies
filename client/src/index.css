@@ -41,7 +41,15 @@
     @apply bg-white rounded-2xl shadow-card border border-base transition-all duration-300;
   }
   .section-pad {
-    @apply py-20 md:py-28;
+    @apply py-12 md:py-16;
+  }
+  /* WhyChooseUs staggered row - desktop only, so mobile's stacked grid stays
+     level. Plain transform (no !important) so hover:!translate-y-0 can win. */
+  @media (min-width: 1024px) {
+    .why-stagger-1,
+    .why-stagger-3 {
+      transform: translateY(28px);
+    }
   }
   .text-gradient {
     @apply bg-text-gradient bg-clip-text text-transparent;
