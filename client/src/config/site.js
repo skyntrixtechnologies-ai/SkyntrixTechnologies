@@ -6,9 +6,9 @@ export const SITE = {
   url: import.meta.env.VITE_SITE_URL || "https://www.skyntrixtechnologies.in",
   email: "skyntrixtechnologies@gmail.com",
   careersEmail: "careers@skyntrix.com",
-  phone: "+91 8925393946",
+  phone: "+91 9600202825",
   phon2: "+91 9790586747",
-  whatsapp: "+91 9790586747",
+  whatsapp: "+91 9600202825",
   address: {
     street: "Madurai",
     city: "Madurai",

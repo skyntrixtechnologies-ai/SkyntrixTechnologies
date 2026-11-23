@@ -807,7 +807,7 @@ const drawSignature = (doc) => {
   doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
   doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.website, lx, y + pad + 54, { lineBreak: false });
   doc.link(lx, y + pad + 54, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 89253 93946", lx, y + pad + 66, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 96002 02825", lx, y + pad + 66, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL
   const rx = dividerX + pad;

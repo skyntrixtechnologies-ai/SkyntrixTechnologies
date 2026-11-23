@@ -118,6 +118,7 @@ export default function Hero() {
         </div>
 
         <motion.div
+          className="hidden sm:block"
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
