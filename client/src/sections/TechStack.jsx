@@ -53,7 +53,20 @@ export default function TechStack() {
           })}
         </Reveal>
 
-        <motion.div layout className="flex flex-wrap justify-center gap-3.5 sm:gap-4">
+        {/* Mobile: auto-scrolling carousel (same marquee pattern as the tech trust strip) */}
+        <div
+          className="group/marquee relative -mx-4 overflow-hidden sm:hidden"
+          style={{ maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)" }}
+        >
+          <div className="flex w-max animate-marquee items-center gap-3.5 px-4 group-hover/marquee:[animation-play-state:paused]">
+            {[...visible, ...visible].map((t, i) => (
+              <TechCard key={`${t.name}-${i}`} t={t} hidden={i >= visible.length} />
+            ))}
+          </div>
+        </div>
+
+        {/* sm and up: filterable wrapped grid */}
+        <motion.div layout className="hidden flex-wrap justify-center gap-3.5 sm:flex sm:gap-4">
           <AnimatePresence mode="popLayout">
             {visible.map((t) => (
               <motion.div
@@ -86,5 +99,25 @@ export default function TechStack() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+function TechCard({ t, hidden = false }) {
+  return (
+    <div
+      aria-hidden={hidden || undefined}
+      className="flex min-w-[9.5rem] shrink-0 items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3.5 shadow-card"
+    >
+      <span
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+        style={{ backgroundColor: `${t.color}1A`, color: t.color }}
+      >
+        <Icon name={t.icon} className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <span>
+        <span className="block text-sm font-bold leading-tight text-ink">{t.name}</span>
+        <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">{t.group}</span>
+      </span>
+    </div>
   );
 }

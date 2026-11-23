@@ -185,12 +185,12 @@ export function Modal({ open, onClose, title, children, footer, size = "md" }) {
 
 export function PageHeader({ title, subtitle, action }) {
   return (
-    <div className="mb-6 flex items-center justify-between gap-4">
-      <div>
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
         <h1 className="heading-md text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-ink/50">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
     </div>
   );
 }

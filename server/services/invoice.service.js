@@ -78,7 +78,7 @@ const COLORS = {
 const SECTION_TITLE_HEIGHT = 26;
 const SIGNATURE_HEIGHT = 100;
 const SECTION_GAP = 8;
-const CONTENT_TOP = 132;
+const CONTENT_TOP = 182;
 const CARD_PAD = 16;
 const ROW_GAP = 7;
 
@@ -203,20 +203,34 @@ export const applyInvoicePaymentState = (invoice, { now = new Date() } = {}) => 
 
 /**
  * Given every active invoice of a quotation (oldest first) and the approved
- * project total, derive each invoice's running cumulative figures:
- * previous paid, total paid till date and remaining project balance.
+ * project total, derive each invoice's running cumulative figures. Two
+ * independent tracks are computed:
+ *  - PAYMENT-based (previousPaid/totalPaidTillDate/remainingBalance): only
+ *    moves when money is actually received. Mirrored onto the lead and drives
+ *    the "fully paid -> delivered" pipeline automation - never change this
+ *    track to mean "invoiced" without checking advanceLeadOnPayment.
+ *  - INVOICED-based (totalInvoicedTillDate): how much of the project has been
+ *    billed as of this invoice, regardless of payment status. This is what
+ *    the invoice PDF/view shows as "Remaining Balance" - it drops the moment
+ *    an invoice is raised.
  */
 export const computeProjectPaymentSummary = (invoices = [], projectTotal = 0) => {
   const roundedTotal = Math.round((Number(projectTotal) || 0) * 100) / 100;
   const ordered = [...invoices].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
   let previousPaid = 0;
+  let previousInvoiced = 0;
   const rows = [];
   for (const invoice of ordered) {
     const amountPaid = Math.round((Number(invoice.amountPaid) || 0) * 100) / 100;
     const totalPaidTillDate = Math.round((previousPaid + amountPaid) * 100) / 100;
     const remainingBalance = Math.max(0, Math.round((roundedTotal - totalPaidTillDate) * 100) / 100);
-    rows.push({ invoice, projectTotal: roundedTotal, previousPaid, totalPaidTillDate, remainingBalance });
+
+    const invoiceAmount = Math.round((Number(invoice.totalAmount) || 0) * 100) / 100;
+    const totalInvoicedTillDate = Math.round((previousInvoiced + invoiceAmount) * 100) / 100;
+
+    rows.push({ invoice, projectTotal: roundedTotal, previousPaid, totalPaidTillDate, remainingBalance, totalInvoicedTillDate });
     previousPaid = totalPaidTillDate;
+    previousInvoiced = totalInvoicedTillDate;
   }
   return rows;
 };
@@ -245,17 +259,19 @@ export const refreshProjectPaymentState = async ({ quotationId, leadId } = {}) =
 
   const rows = computeProjectPaymentSummary(invoices, projectTotal);
   for (const row of rows) {
-    const { invoice, previousPaid, totalPaidTillDate, remainingBalance } = row;
+    const { invoice, previousPaid, totalPaidTillDate, remainingBalance, totalInvoicedTillDate } = row;
     if (
       invoice.projectTotal !== projectTotal ||
       invoice.previousPaid !== previousPaid ||
       invoice.totalPaidTillDate !== totalPaidTillDate ||
-      invoice.remainingBalance !== remainingBalance
+      invoice.remainingBalance !== remainingBalance ||
+      invoice.totalInvoicedTillDate !== totalInvoicedTillDate
     ) {
       invoice.projectTotal = projectTotal;
       invoice.previousPaid = previousPaid;
       invoice.totalPaidTillDate = totalPaidTillDate;
       invoice.remainingBalance = remainingBalance;
+      invoice.totalInvoicedTillDate = totalInvoicedTillDate;
       await invoice.save();
     }
   }
@@ -309,30 +325,61 @@ const drawSectionTitle = (doc, title) => {
   doc.y = y + SECTION_TITLE_HEIGHT;
 };
 
+/**
+ * Brand wave header: a purple-to-blue gradient band (mirrors the logo's own
+ * gradient and the site's primary-gradient) with a flowing bottom edge instead
+ * of a flat bar, plus a faint glossy swoosh echoing the logo's motion line.
+ * Every anchor/control point of the wave stays at y >= 118 so it can never
+ * rise above the fixed text/pill zone laid out on top of it.
+ */
 const drawHeader = (doc, invoice) => {
-  doc.rect(0, 0, PAGE_WIDTH, 118).fillColor(COLORS.ink).fill();
-  doc.rect(0, 118, PAGE_WIDTH, 4).fillColor(COLORS.primary).fill();
+  const W = PAGE_WIDTH;
+
+  const grad = doc.linearGradient(0, 0, W, 170);
+  grad.stop(0, "#7200F5").stop(0.55, "#8A00F5").stop(1, "#2048F5");
+
+  doc.save();
+  doc.moveTo(0, 0)
+    .lineTo(W, 0)
+    .lineTo(W, 120)
+    .bezierCurveTo(W * 0.82, 128, W * 0.66, 118, W * 0.58, 118)
+    .bezierCurveTo(W * 0.42, 118, W * 0.3, 162, W * 0.18, 160)
+    .bezierCurveTo(W * 0.1, 159, W * 0.05, 140, 0, 136)
+    .closePath()
+    .fill(grad);
+  doc.restore();
+
+  doc.save();
+  doc.opacity(0.14);
+  doc.moveTo(-10, 46)
+    .bezierCurveTo(W * 0.32, 14, W * 0.6, 58, W + 10, 22)
+    .lineWidth(34)
+    .lineCap("round")
+    .strokeColor("#FFFFFF")
+    .stroke();
+  doc.restore();
+  doc.opacity(1);
 
   try {
     if (fs.existsSync(LOGO_PATH)) {
-      doc.image(LOGO_PATH, MARGIN, 30, { width: 52, height: 52 });
+      doc.image(LOGO_PATH, MARGIN, 24, { width: 46, height: 46 });
     }
   } catch (err) {
     logger.warn(`[Invoice] logo render skipped: ${err.message}`);
   }
 
-  doc.font(F.bold).fontSize(16).fillColor(COLORS.white).text(COMPANY.name, 111, 30, { width: 235, characterSpacing: 0.2 });
-  doc.font(F.regular).fontSize(8).fillColor("#C4B5FD").text(COMPANY.tagline, 111, 54, { width: 235, characterSpacing: 0.2 });
+  doc.font(F.bold).fontSize(15).fillColor(COLORS.white).text(COMPANY.name, MARGIN + 56, 26, { width: 220, characterSpacing: 0.2 });
+  doc.font(F.regular).fontSize(8).fillColor("#E9D5FF").text(COMPANY.tagline, MARGIN + 56, 48, { width: 220, characterSpacing: 0.2 });
 
-  const rightX = PAGE_WIDTH - MARGIN - 210;
+  const rightX = W - MARGIN - 210;
   doc.font(F.semibold).fontSize(16).fillColor(COLORS.white)
-    .text("INVOICE", rightX, 20, { width: 210, align: "right", characterSpacing: 2 });
+    .text("INVOICE", rightX, 16, { width: 210, align: "right", characterSpacing: 2 });
   doc.font(F.semibold).fontSize(9).fillColor("#E9D5FF")
-    .text(`No: ${invoice.invoiceNumber}`, rightX, 46, { width: 210, align: "right" });
-  doc.font(F.regular).fontSize(8.5).fillColor("#A5B4FC")
-    .text(`Date: ${formatDate(invoice.invoiceDate)}`, rightX, 63, { width: 210, align: "right" });
-  doc.font(F.regular).fontSize(8.5).fillColor("#A5B4FC")
-    .text(`Due Date: ${formatDate(invoice.dueDate)}`, rightX, 79, { width: 210, align: "right" });
+    .text(`No: ${invoice.invoiceNumber}`, rightX, 42, { width: 210, align: "right" });
+  doc.font(F.regular).fontSize(8.5).fillColor("#DCEAFE")
+    .text(`Date: ${formatDate(invoice.invoiceDate)}`, rightX, 59, { width: 210, align: "right" });
+  doc.font(F.regular).fontSize(8.5).fillColor("#DCEAFE")
+    .text(`Due Date: ${formatDate(invoice.dueDate)}`, rightX, 75, { width: 210, align: "right" });
 
   const statusCfg = {
     paid: { bg: "#064E3B", fg: "#6EE7B7" },
@@ -343,9 +390,9 @@ const drawHeader = (doc, invoice) => {
   const cfg = statusCfg[invoice.paymentStatus] || statusCfg.pending;
   const statusText = `STATUS: ${String(invoice.paymentStatus || "pending").toUpperCase()}`;
   const pillW = doc.font(F.semibold).fontSize(7.5).widthOfString(statusText) + 18;
-  doc.roundedRect(PAGE_WIDTH - MARGIN - pillW, 97, pillW, 15, 7.5).fillColor(cfg.bg).fill();
+  doc.roundedRect(W - MARGIN - pillW, 94, pillW, 15, 7.5).fillColor(cfg.bg).fill();
   doc.font(F.semibold).fontSize(7.5).fillColor(cfg.fg)
-    .text(statusText, PAGE_WIDTH - MARGIN - pillW + 9, 99.5, { width: pillW - 18, align: "center", characterSpacing: 0.6 });
+    .text(statusText, W - MARGIN - pillW + 9, 96.5, { width: pillW - 18, align: "center", characterSpacing: 0.6 });
 };
 
 const formatMobileDisplay = (value) => {
@@ -553,12 +600,20 @@ const drawNotesAndSummary = (doc, invoice) => {
   const innerW = colW - padX * 2;
   const rowH = 13.5;
 
+  // Invoiced-based (not paid-based): drops the moment this invoice is raised,
+  // regardless of whether it has been settled yet. Falls back to this
+  // invoice's own amount for older records generated before this field
+  // existed, so a never-refreshed invoice doesn't show "Rs. 0 invoiced".
+  const totalInvoiced = Number(invoice.totalInvoicedTillDate) || Number(invoice.totalAmount) || 0;
+  const previouslyInvoiced = Math.max(0, Math.round((totalInvoiced - (Number(invoice.totalAmount) || 0)) * 100) / 100);
+  const projectRemaining = Math.max(0, Math.round(((Number(invoice.projectTotal) || 0) - totalInvoiced) * 100) / 100);
+
   const projectRows = Number(invoice.projectTotal) > 0
     ? [
         ["Project Total", formatMoney(invoice.projectTotal)],
-        ["Previous Payments", formatMoney(invoice.previousPaid || 0)],
-        ["Total Paid Till Date", formatMoney(invoice.totalPaidTillDate || 0)],
-        ["Remaining Balance", formatMoney(invoice.remainingBalance || 0)],
+        ["Previously Invoiced", formatMoney(previouslyInvoiced)],
+        ["Total Invoiced Till Date", formatMoney(totalInvoiced)],
+        ["Remaining Balance", formatMoney(projectRemaining)],
       ]
     : [];
   const subtotalRows = [
@@ -613,7 +668,7 @@ const drawNotesAndSummary = (doc, invoice) => {
     const isLast = i === projectRows.length - 1;
     drawRow(label, value, cursor, {
       bold: true,
-      valueColor: isLast && (Number(invoice.remainingBalance) || 0) > 0 ? COLORS.danger : COLORS.ink,
+      valueColor: isLast && projectRemaining > 0 ? COLORS.danger : COLORS.ink,
     });
     cursor += rowH;
   });

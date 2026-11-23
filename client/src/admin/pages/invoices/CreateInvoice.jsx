@@ -73,6 +73,13 @@ export default function CreateInvoice() {
   const taxRate = watch("taxRate");
   const totals = computeTotals(items, discount, discountType, taxRate);
 
+  // Invoiced-based project tracking (not paid-based): drops the moment this
+  // invoice is raised. prefill.summary.invoiced already excludes this invoice
+  // itself (server passes excludeInvoiceId while editing).
+  const previouslyInvoiced = Number(prefill?.summary?.invoiced) || 0;
+  const totalInvoicedTillDate = previouslyInvoiced + (Number(totals.totalAmount) || 0);
+  const projectRemainingBalance = Math.max(0, (Number(prefill?.summary?.projectTotal) || 0) - totalInvoicedTillDate);
+
   // Load approved quotations for the picker.
   useEffect(() => {
     (async () => {
@@ -118,7 +125,7 @@ export default function CreateInvoice() {
         });
         if (d.quotationId) {
           try {
-            const p = await adminGet(`/invoices/prefill/${d.quotationId}`);
+            const p = await adminGet(`/invoices/prefill/${d.quotationId}`, { excludeInvoiceId: id });
             setPrefill(p.data || null);
           } catch (e) {
             toast.error(e.message);
@@ -140,7 +147,7 @@ export default function CreateInvoice() {
     }
     setPrefillLoading(true);
     try {
-      const res = await adminGet(`/invoices/prefill/${quotationId}`);
+      const res = await adminGet(`/invoices/prefill/${quotationId}`, isEdit ? { excludeInvoiceId: id } : undefined);
       const data = res.data || {};
       setPrefill(data);
       const q = data.quotation || {};
@@ -240,10 +247,14 @@ export default function CreateInvoice() {
     toast.error(first?.message || "Please fix the highlighted fields");
   };
 
-  /** Reject amounts that would exceed the project's remaining billable balance. */
+  /**
+   * Reject amounts that would exceed the project's remaining billable balance.
+   * The prefill summary already excludes this invoice itself (excludeInvoiceId),
+   * so availableForInvoice is the true cap - no need to add anything back.
+   */
   const availableToInvoice = !prefill?.summary?.projectTotal
     ? null
-    : (Number(prefill.summary.availableForInvoice) || 0) + (isEdit && loadedInvoice ? Number(loadedInvoice.totalAmount) || 0 : 0);
+    : Number(prefill.summary.availableForInvoice) || 0;
 
   const balanceError = (amount) => {
     if (availableToInvoice == null) return "";
@@ -381,7 +392,7 @@ export default function CreateInvoice() {
             <div className="mb-4">
               <h2 className="font-display text-sm font-bold uppercase tracking-wide text-ink/60">Project payment tracking</h2>
               <p className="mt-0.5 text-xs text-ink/40">
-                Auto-computed from the approved quotation ({prefill.quotation?.quotationNumber}) and the paid invoices. Balances are never entered manually.
+                Auto-computed from the approved quotation ({prefill.quotation?.quotationNumber}) and the invoices raised so far. Balances are never entered manually.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -390,21 +401,21 @@ export default function CreateInvoice() {
                 <div className="mt-0.5 font-bold text-ink">{formatMoney(prefill.summary.projectTotal)}</div>
               </div>
               <div className="rounded-xl bg-base/70 px-3 py-2.5">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/45">Previous Payments</div>
-                <div className="mt-0.5 font-bold text-ink">{formatMoney(prefill.summary.previousPaid)}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/45">Previously Invoiced</div>
+                <div className="mt-0.5 font-bold text-ink">{formatMoney(previouslyInvoiced)}</div>
               </div>
               <div className="rounded-xl bg-primary/10 px-3 py-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">Current Invoice</div>
                 <div className="mt-0.5 font-bold text-primary">{formatMoney(totals.totalAmount)}</div>
               </div>
               <div className="rounded-xl bg-base/70 px-3 py-2.5">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/45">Total Paid Till Date</div>
-                <div className="mt-0.5 font-bold text-emerald-600">{formatMoney(prefill.summary.totalPaidTillDate)}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/45">Total Invoiced Till Date</div>
+                <div className="mt-0.5 font-bold text-ink">{formatMoney(totalInvoicedTillDate)}</div>
               </div>
               <div className="rounded-xl bg-base/70 px-3 py-2.5">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/45">Outstanding Balance</div>
-                <div className={`mt-0.5 font-bold ${Number(prefill.summary.remainingBalance) > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                  {formatMoney(prefill.summary.remainingBalance)}
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/45">Remaining Balance</div>
+                <div className={`mt-0.5 font-bold ${projectRemainingBalance > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                  {formatMoney(projectRemainingBalance)}
                 </div>
               </div>
             </div>

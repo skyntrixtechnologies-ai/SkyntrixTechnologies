@@ -29,9 +29,33 @@ function renderMarkdown(content) {
 
 export default function BlogPost() {
   const { slug } = useParams();
-  const { data } = useSiteData();
+  const { data, loading } = useSiteData();
   const blogPosts = data?.blogPosts || [];
   const post = blogPosts.find((b) => b.slug === slug) || blogPosts[0];
+
+  if (loading && !post) {
+    return (
+      <>
+        <Seo title="Blog" path={`/blog/${slug}`} noindex />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </>
+    );
+  }
+
+  if (!post) {
+    return (
+      <>
+        <Seo title="Article not found" path={`/blog/${slug}`} noindex />
+        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+          <h1 className="heading-lg text-ink">Article not found</h1>
+          <Link to="/blog" className="btn-primary mt-6">Back to Blog</Link>
+        </div>
+      </>
+    );
+  }
+
   const related = blogPosts.filter((b) => b.category === post.category && b.id !== post.id).slice(0, 3);
   const shareUrl = `${SITE.url}/blog/${post.slug}`;
   const hasContent = !!post.content;

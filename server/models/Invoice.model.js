@@ -60,11 +60,19 @@ const invoiceSchema = new mongoose.Schema(
     amountPaid: { type: Number, default: 0 },
     balanceDue: { type: Number, default: 0 },
 
-    // Cumulative project payment tracking (reference = approved quotation total).
+    // Cumulative project PAYMENT tracking (reference = approved quotation total).
+    // Payment-based: only moves when money is actually received. Drives the
+    // lead pipeline's "fully paid -> delivered" automation - never repurpose
+    // this for "amount invoiced" without checking advanceLeadOnPayment.
     projectTotal: { type: Number, default: 0 },
     previousPaid: { type: Number, default: 0 },
     totalPaidTillDate: { type: Number, default: 0 },
     remainingBalance: { type: Number, default: 0 },
+    // Cumulative project INVOICED tracking: how much of the project total has
+    // been billed as of this invoice, regardless of whether it's been paid yet.
+    // This is what the invoice PDF/view shows as "Remaining Balance" - it drops
+    // the moment an invoice is raised, not when it's settled.
+    totalInvoicedTillDate: { type: Number, default: 0 },
 
     invoiceDate: { type: Date, default: () => new Date() },
     dueDate: { type: Date, default: null },

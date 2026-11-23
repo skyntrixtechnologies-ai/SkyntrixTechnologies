@@ -85,6 +85,7 @@ const PUBLIC_INVOICE_KEYS = [
   "previousPaid",
   "totalPaidTillDate",
   "remainingBalance",
+  "totalInvoicedTillDate",
   "invoiceDate",
   "dueDate",
   "paymentMethod",
@@ -259,6 +260,11 @@ const attachProjectReference = async ({ payload, quotationId, excludeId }) => {
     payload.taxAmount = finance.taxAmount;
     payload.totalAmount = finance.totalAmount;
   }
+
+  // Running "how much of the project has been invoiced" - updates the moment
+  // this invoice is raised, independent of payment status. Separate from the
+  // paid-based figures above (ref.invoicedOthers sums totalAmount, not amountPaid).
+  payload.totalInvoicedTillDate = round2(ref.invoicedOthers + (Number(payload.totalAmount) || 0));
 
   assertInvoiceWithinBalance({
     projectTotal: ref.projectTotal,
@@ -869,11 +875,18 @@ export const getInvoicePrefill = asyncHandler(async (req, res) => {
   const quotation = await Quotation.findById(req.params.id).lean();
   if (!quotation) throw ApiError.notFound("Quotation not found");
 
+  // When editing an existing invoice, the form passes its own id so the
+  // summary never counts that invoice's own amount/payments as "previous" -
+  // otherwise editing a paid invoice would double-count it against itself.
+  const excludeInvoiceId = mongoose.isValidObjectId(req.query.excludeInvoiceId)
+    ? String(req.query.excludeInvoiceId)
+    : null;
+
   const existing = await Invoice.find({ quotationId: quotation._id }).sort({ createdAt: -1 }).lean();
   const usedTypes = new Set(existing.map((inv) => inv.type));
   const suggestedTypes = ["advance", "partial", "final", "full"].filter((t) => !usedTypes.has(t));
 
-  const active = existing.filter((inv) => inv.status !== "cancelled");
+  const active = existing.filter((inv) => inv.status !== "cancelled" && (!excludeInvoiceId || String(inv._id) !== excludeInvoiceId));
   const projectTotal = round2(quotation.totalAmount);
   const previousPaid = round2(active.reduce((a, inv) => a + (Number(inv.amountPaid) || 0), 0));
   const totalPaidTillDate = previousPaid;

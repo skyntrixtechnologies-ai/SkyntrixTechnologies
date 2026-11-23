@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { API_URL, SITE } from "../config/site";
 import { cn } from "../lib/utils";
+import logo from "../assets/logo.png";
 
 const API = (API_URL || "/api").replace(/\/$/, "");
 
@@ -94,20 +95,23 @@ export default function InvoiceView() {
     <div className="min-h-screen bg-base py-10 px-4">
       <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-white shadow-card">
         {/* Header */}
-        <div className="bg-ink px-8 py-7 text-white">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="font-display text-lg font-bold leading-tight">{SITE.name}</div>
-              <div className="text-xs text-purple-300">{SITE.tagline}</div>
+        <div className="relative overflow-hidden bg-primary-gradient px-8 pt-7 pb-14 text-white">
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="" width="40" height="40" className="h-10 w-10 shrink-0 object-contain" />
+              <div>
+                <div className="font-display text-lg font-bold leading-tight">{SITE.name}</div>
+                <div className="text-xs text-white/70">{SITE.tagline}</div>
+              </div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-extrabold tracking-wide">INVOICE</div>
-              <div className="mt-1 text-xs text-indigo-300">No: {invoice.invoiceNumber || "—"}</div>
-              <div className="text-xs text-indigo-300">Date: {formatDate(invoice.invoiceDate)}</div>
-              <div className="text-xs text-indigo-300">Due: {formatDate(invoice.dueDate)}</div>
+              <div className="mt-1 text-xs text-white/80">No: {invoice.invoiceNumber || "—"}</div>
+              <div className="text-xs text-white/80">Date: {formatDate(invoice.invoiceDate)}</div>
+              <div className="text-xs text-white/80">Due: {formatDate(invoice.dueDate)}</div>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="relative mt-4 flex flex-wrap items-center gap-2">
             <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize", PAY_BADGE[invoice.paymentStatus] || PAY_BADGE.pending)}>
               {invoice.paymentStatus}
             </span>
@@ -116,6 +120,11 @@ export default function InvoiceView() {
               Balance due: <span className="font-bold text-white">{formatMoney(balanceDue)}</span>
             </span>
           </div>
+
+          {/* Wave cut — echoes the logo's own curved motion line */}
+          <svg viewBox="0 0 400 48" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-10 w-full text-white" aria-hidden="true">
+            <path fill="currentColor" d="M0,22 C70,42 130,6 210,18 C280,29 330,10 400,16 L400,48 L0,48 Z" />
+          </svg>
         </div>
 
         <div className="p-8">
@@ -175,13 +184,20 @@ export default function InvoiceView() {
 
           {/* Totals */}
           <div className="mt-6 ml-auto max-w-xs space-y-2 text-sm">
-            {Number(invoice.projectTotal) > 0 && (
-              <>
-                <div className="flex justify-between border-b border-base pb-2"><span className="font-semibold text-ink/70">Project Total</span><span className="font-semibold text-ink">{formatMoney(invoice.projectTotal)}</span></div>
-                <div className="flex justify-between px-3"><span className="text-ink/60">Total Paid Till Date</span><span className="font-medium text-emerald-600">{formatMoney(invoice.totalPaidTillDate)}</span></div>
-                <div className="flex justify-between px-3"><span className="font-semibold text-ink">Outstanding Balance</span><span className={cn("font-bold", Number(invoice.remainingBalance) > 0 ? "text-red-600" : "text-emerald-600")}>{formatMoney(invoice.remainingBalance)}</span></div>
-              </>
-            )}
+            {Number(invoice.projectTotal) > 0 && (() => {
+              // Invoiced-based (not paid-based): drops the moment this invoice is
+              // raised, regardless of payment status. Falls back to this invoice's
+              // own amount for older records generated before this field existed.
+              const totalInvoiced = Number(invoice.totalInvoicedTillDate) || Number(invoice.totalAmount) || 0;
+              const projectRemaining = Math.max(0, Number(invoice.projectTotal) - totalInvoiced);
+              return (
+                <>
+                  <div className="flex justify-between border-b border-base pb-2"><span className="font-semibold text-ink/70">Project Total</span><span className="font-semibold text-ink">{formatMoney(invoice.projectTotal)}</span></div>
+                  <div className="flex justify-between px-3"><span className="text-ink/60">Total Invoiced Till Date</span><span className="font-medium text-ink">{formatMoney(totalInvoiced)}</span></div>
+                  <div className="flex justify-between px-3"><span className="font-semibold text-ink">Remaining Balance</span><span className={cn("font-bold", projectRemaining > 0 ? "text-red-600" : "text-emerald-600")}>{formatMoney(projectRemaining)}</span></div>
+                </>
+              );
+            })()}
             <div className="flex justify-between"><span className="text-ink/60">Subtotal</span><span className="font-medium text-ink">{formatMoney(invoice.subtotal)}</span></div>
             {Number(invoice.discountAmount) > 0 && (
               <div className="flex justify-between"><span className="text-ink/60">Discount</span><span className="font-medium text-red-600">- {formatMoney(invoice.discountAmount)}</span></div>
@@ -216,8 +232,8 @@ export default function InvoiceView() {
               </a>
             ) : <span />}
             <div className="text-center text-xs text-ink/50">
-              <div>{SITE.name} · {SITE.address}</div>
-              <div>{SITE.website.replace(/^https?:\/\//, "")} · {SITE.email}</div>
+              <div>{SITE.name} · {SITE.address.full}</div>
+              <div>{SITE.url.replace(/^https?:\/\//, "")} · {SITE.email}</div>
             </div>
           </div>
 

@@ -29,7 +29,7 @@ export default function TechTrustStrip() {
         </p>
 
         <div
-          className="group/marquee relative min-w-0 flex-1 overflow-hidden"
+          className="group/marquee relative w-full min-w-0 flex-1 overflow-hidden"
           style={{ maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)" }}
         >
           <ul className="flex w-max animate-marquee items-center gap-x-10 group-hover/marquee:[animation-play-state:paused] sm:gap-x-12">

@@ -230,7 +230,7 @@ export default function Requirements() {
       <RequirementStatCards stats={stats} loading={statsLoading} />
 
       {/* Toolbar */}
-      <div className="card mb-4 mt-4 flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
+      <div className="card mb-4 mt-4 flex flex-col gap-3 p-3 lg:flex-row lg:flex-wrap lg:items-center">
         <div className="relative flex-1">
           <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/30" />
           <Input
