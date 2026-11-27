@@ -132,12 +132,14 @@ export function getServiceSchema(service, path) {
 }
 
 export function getArticleSchema(post, path) {
+  const image = post.thumbnail && /^(https?:)?\/\//.test(post.thumbnail) ? post.thumbnail : undefined;
   return {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description: post.excerpt,
     url: `${SITE.url}${path}`,
+    image,
     author: {
       "@type": "Person",
       name: post.author
@@ -148,7 +150,7 @@ export function getArticleSchema(post, path) {
       url: SITE.url
     },
     datePublished: post.date,
-    dateModified: post.date,
+    dateModified: post.updatedAt || post.date,
     mainEntityOfPage: {
       "@type": "WebPage",
       "@id": `${SITE.url}${path}`

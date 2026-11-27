@@ -1,0 +1,103 @@
+{
+  "migrated": [
+    {
+      "slug": "how-much-does-website-cost-madurai-2026",
+      "id": "6b06e1b8522590b82ae4544c",
+      "status": "published",
+      "reason": "commercial article with full body"
+    },
+    {
+      "slug": "how-to-choose-web-development-company-madurai",
+      "id": "6b06e1b9522590b82ae45450",
+      "status": "published",
+      "reason": "commercial article with full body"
+    },
+    {
+      "slug": "ecommerce-website-cost-india",
+      "id": "6b06e1b9522590b82ae45453",
+      "status": "published",
+      "reason": "commercial article with full body"
+    },
+    {
+      "slug": "mobile-app-development-cost-india",
+      "id": "6b06e1b9522590b82ae45456",
+      "status": "published",
+      "reason": "commercial article with full body"
+    },
+    {
+      "slug": "seo-friendly-website-development",
+      "id": "6b06e1b9522590b82ae45459",
+      "status": "published",
+      "reason": "commercial article with full body"
+    },
+    {
+      "slug": "what-business-website-should-include",
+      "id": "6b06e1b9522590b82ae4545c",
+      "status": "published",
+      "reason": "commercial article with full body"
+    },
+    {
+      "slug": "ui-ux-trends-2026",
+      "id": "6b06e1b9522590b82ae45460",
+      "status": "draft",
+      "reason": "no content field in content.js - needs a real body before publishing"
+    },
+    {
+      "slug": "react-vs-nextjs",
+      "id": "6b06e1b9522590b82ae45463",
+      "status": "draft",
+      "reason": "no content field in content.js - needs a real body before publishing"
+    },
+    {
+      "slug": "social-media-strategy-roi",
+      "id": "6b06e1b9522590b82ae45466",
+      "status": "draft",
+      "reason": "no content field in content.js - needs a real body before publishing"
+    },
+    {
+      "slug": "mobile-app-vs-website",
+      "id": "6b06e1b9522590b82ae45469",
+      "status": "draft",
+      "reason": "no content field in content.js - needs a real body before publishing"
+    },
+    {
+      "slug": "seo-for-local-business",
+      "id": "6b06e1b9522590b82ae4546c",
+      "status": "draft",
+      "reason": "no content field in content.js - needs a real body before publishing"
+    }
+  ],
+  "skipped": [
+    {
+      "slug": "how-much-does-website-cost-madurai-2026",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "how-to-choose-web-development-company-madurai",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "ecommerce-website-cost-india",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "mobile-app-development-cost-india",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "seo-friendly-website-development",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "what-business-website-should-include",
+      "reason": "superseded by the full commercial article with the same slug"
+    }
+  ],
+  "duplicated": [
+    {
+      "slug": "why-speed-matters-for-seo",
+      "reason": "already exists in MongoDB"
+    }
+  ],
+  "failed": []
+}

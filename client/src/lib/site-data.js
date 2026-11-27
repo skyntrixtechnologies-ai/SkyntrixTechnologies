@@ -72,7 +72,7 @@ function toTestimonial(t) {
   };
 }
 
-function toBlogPost(b) {
+export function toBlogPost(b) {
   return {
     id: b.slug || b._id,
     slug: b.slug,
@@ -80,11 +80,16 @@ function toBlogPost(b) {
     category: b.category || "Insights",
     excerpt: b.excerpt || "",
     content: b.content || "",
+    contentFormat: b.contentFormat || "markdown",
     author: b.author || "Skyntrix Team",
+    authorId: b.authorId || "",
     date: b.publishedDate || b.createdAt,
+    updatedAt: b.updatedAt || b.publishedDate || b.createdAt,
     readTime: b.readTime || "5 min",
     thumbnail: b.thumbnail || b.featuredImage || "",
     tags: b.tags || [],
+    relatedServices: b.relatedServices || [],
+    views: b.views || 0,
   };
 }
 

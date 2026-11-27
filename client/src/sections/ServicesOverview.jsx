@@ -90,10 +90,14 @@ function ServiceCarousel({ services }) {
         </div>
       </div>
 
+      {/* -mx-3/px-3 give each card's hover shadow room to bleed without being
+          hard-clipped by the scroll container's own edge (visible otherwise as
+          a jagged cut-off glow on the first/last card, which have no neighbor
+          gap to bleed into). */}
       <div
         ref={trackRef}
         onScroll={updateEdges}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-3 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-3 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {services.map((s, i) => (
           <Reveal key={s.slug} delay={(i % 4) * 0.05} className="w-[82%] shrink-0 snap-start sm:w-[320px]">
@@ -120,7 +124,18 @@ export default function ServicesOverview() {
           subtitle="From your first online presence to complex business applications, we help turn ideas into practical digital products."
         />
 
-        <ServiceCarousel services={services} />
+        {/* Mobile: plain stacked cards, normal page scroll only - no separate
+            horizontal-scroll/autoplay gesture, no Reveal re-trigger glitch. */}
+        <div className="grid gap-5 sm:hidden">
+          {services.map((s) => (
+            <ServiceCard key={s.slug} service={s} showFeatures />
+          ))}
+        </div>
+
+        {/* sm and up: autoplaying horizontal carousel, where there's room for it. */}
+        <div className="hidden sm:block">
+          <ServiceCarousel services={services} />
+        </div>
 
         <Reveal className="mt-6">
           <div className="flex flex-col items-start justify-between gap-5 rounded-3xl border border-primary/10 bg-gradient-to-r from-lavender via-white to-cool p-6 sm:p-8 md:flex-row md:items-center">

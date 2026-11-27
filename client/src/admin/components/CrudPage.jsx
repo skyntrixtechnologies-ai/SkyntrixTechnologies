@@ -97,7 +97,7 @@ export default function CrudPage({ config }) {
     try {
       const url = `${api}/admin${editingId ? `/${editingId}` : ""}`;
       const fd = buildFormData();
-      if (editingId) await adminPut(url, fd, true);
+      if (editingId) await adminPut(url, fd);
       else await adminPost(url, fd);
       toast.ok(`${singular} ${editingId ? "updated" : "created"}`);
       close();

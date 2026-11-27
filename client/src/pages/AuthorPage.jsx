@@ -1,30 +1,31 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FaChevronLeft, FaLinkedin, FaXTwitter, FaGithub, FaDribbble, FaArrowRight } from "react-icons/fa6";
 import Seo from "../components/Seo";
 import Reveal from "../components/Reveal";
 import CtaSection from "../components/CtaSection";
+import NotFound from "./NotFound";
 import { authors } from "../data/authors";
-import { blogPosts } from "../data/content";
-import { commercialBlogPosts } from "../data/blog-articles";
+import { listBlogPosts } from "../lib/blog-api";
 
 export default function AuthorPage() {
   const { slug } = useParams();
   const author = authors.find((a) => a.id === slug);
+  const [authorArticles, setAuthorArticles] = useState([]);
+
+  useEffect(() => {
+    if (!author) return;
+    let cancelled = false;
+    listBlogPosts({ authorId: author.id, limit: 50 })
+      .then(({ posts }) => { if (!cancelled) setAuthorArticles(posts); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [author]);
 
   if (!author) {
-    return (
-      <>
-        <Seo title="Author not found" path={`/authors/${slug}`} noindex />
-        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-          <h1 className="heading-lg text-ink">Author not found</h1>
-          <Link to="/blog" className="btn-primary mt-6">Back to Blog</Link>
-        </div>
-      </>
-    );
+    return <NotFound title="Author Not Found" />;
   }
 
-  const allPosts = [...blogPosts, ...commercialBlogPosts];
-  const authorArticles = allPosts.filter((p) => p.authorId === author.id);
   const socialLinks = author.social ? Object.entries(author.social) : [];
 
   const breadcrumbs = [

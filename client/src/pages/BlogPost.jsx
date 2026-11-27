@@ -1,42 +1,66 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { FaChevronLeft, FaClock, FaXTwitter, FaLinkedinIn, FaFacebookF, FaCalendar, FaArrowRight } from "react-icons/fa6";
 import Seo, { getArticleSchema } from "../components/Seo";
 import Reveal from "../components/Reveal";
 import CtaSection from "../components/CtaSection";
+import NotFound from "./NotFound";
 import { SITE } from "../config/site";
-import { useSiteData } from "../lib/SiteDataContext";
 import { services } from "../data/services";
+import { getBlogBySlug, listBlogPosts } from "../lib/blog-api";
+import { renderArticleBody, blogCover } from "../lib/content";
 
-function renderMarkdown(content) {
-  if (!content) return [];
-  const blocks = content.split("\n\n");
-  return blocks.map((block, i) => {
-    const trimmed = block.trim();
-    if (!trimmed) return null;
-    if (trimmed.startsWith("### ")) {
-      return { type: "h3", text: trimmed.slice(4), key: i };
-    }
-    if (trimmed.startsWith("## ")) {
-      return { type: "h2", text: trimmed.slice(3), key: i };
-    }
-    if (trimmed.startsWith("- ")) {
-      const items = trimmed.split("\n").map((l) => l.replace(/^- /, "").trim());
-      return { type: "ul", items, key: i };
-    }
-    return { type: "p", text: trimmed, key: i };
-  }).filter(Boolean);
+function relatedScore(candidate, post) {
+  const tagOverlap = (candidate.tags || []).filter((t) => (post.tags || []).includes(t)).length;
+  const sameCategory = candidate.category === post.category ? 10 : 0;
+  return sameCategory + tagOverlap;
 }
 
 export default function BlogPost() {
   const { slug } = useParams();
-  const { data, loading } = useSiteData();
-  const blogPosts = data?.blogPosts || [];
-  const post = blogPosts.find((b) => b.slug === slug) || blogPosts[0];
+  const [post, setPost] = useState(null);
+  const [related, setRelated] = useState([]);
+  const [status, setStatus] = useState("loading"); // loading | ok | not-found | error
 
-  if (loading && !post) {
+  useEffect(() => {
+    // Aborts the in-flight request on cleanup (not just a "cancelled" flag) so
+    // React 18 StrictMode's dev-only double-invoke - or a fast slug change -
+    // never lets a stale request reach the server and double-count a view.
+    const controller = new AbortController();
+
+    setStatus("loading");
+    setPost(null);
+    setRelated([]);
+
+    (async () => {
+      try {
+        const data = await getBlogBySlug(slug, { signal: controller.signal });
+        setPost(data);
+        setStatus("ok");
+
+        try {
+          const { posts } = await listBlogPosts(
+            { category: data.category, excludeSlug: data.slug, limit: 6 },
+            { signal: controller.signal }
+          );
+          const ranked = [...posts].sort((a, b) => relatedScore(b, data) - relatedScore(a, data)).slice(0, 3);
+          setRelated(ranked);
+        } catch {
+          // Related articles are a nice-to-have - a failed fetch shouldn't break the article page.
+        }
+      } catch (e) {
+        if (e.name === "AbortError") return;
+        setStatus(e.status === 404 ? "not-found" : "error");
+      }
+    })();
+
+    return () => controller.abort();
+  }, [slug]);
+
+  if (status === "loading") {
     return (
       <>
-        <Seo title="Blog" path={`/blog/${slug}`} noindex />
+        <Seo title="Loading..." path={`/blog/${slug}`} noindex />
         <div className="flex min-h-[60vh] items-center justify-center">
           <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
@@ -44,22 +68,26 @@ export default function BlogPost() {
     );
   }
 
-  if (!post) {
+  if (status === "not-found") {
+    return <NotFound title="Article Not Found" />;
+  }
+
+  if (status === "error") {
     return (
       <>
-        <Seo title="Article not found" path={`/blog/${slug}`} noindex />
+        <Seo title="Something went wrong" path={`/blog/${slug}`} noindex />
         <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-          <h1 className="heading-lg text-ink">Article not found</h1>
+          <h1 className="heading-lg text-ink">Couldn't load this article</h1>
+          <p className="mt-3 text-ink/60">Please check your connection and try again.</p>
           <Link to="/blog" className="btn-primary mt-6">Back to Blog</Link>
         </div>
       </>
     );
   }
 
-  const related = blogPosts.filter((b) => b.category === post.category && b.id !== post.id).slice(0, 3);
   const shareUrl = `${SITE.url}/blog/${post.slug}`;
-  const hasContent = !!post.content;
-  const rendered = hasContent ? renderMarkdown(post.content) : [];
+  const bodyHtml = renderArticleBody(post.content, post.contentFormat);
+  const cover = blogCover(post);
 
   const relatedService = post.relatedServices?.[0]
     ? services.find((s) => s.slug === post.relatedServices[0])
@@ -73,17 +101,13 @@ export default function BlogPost() {
     { name: post.title }
   ];
 
-  const authorRole = post.author === "Arjun Skyntrix" ? "Founder & CEO" :
-    post.author === "Vikram Singh" ? "Head of Engineering" :
-    post.author === "Meera Nair" ? "VP of Design" :
-    post.author === "Ishita Patel" ? "Marketing Lead" : "Contributor";
-
   return (
     <>
       <Seo
         title={post.title}
         path={`/blog/${post.slug}`}
         description={post.excerpt}
+        image={cover || undefined}
         type="article"
         jsonLd={articleSchema}
         breadcrumbs={breadcrumbs}
@@ -103,46 +127,26 @@ export default function BlogPost() {
           </Reveal>
 
           <Reveal className="mx-auto mt-8 max-w-3xl">
-            <div className="h-64 rounded-3xl bg-gradient-to-br from-primary to-secondary md:h-96" />
+            {cover ? (
+              <img
+                src={cover}
+                alt={post.title}
+                className="h-64 w-full rounded-3xl object-cover md:h-96"
+                loading="eager"
+              />
+            ) : (
+              <div className="h-64 rounded-3xl bg-gradient-to-br from-primary to-secondary md:h-96" />
+            )}
           </Reveal>
 
           <div className="mx-auto mt-10 max-w-3xl">
-            {hasContent ? (
-              rendered.map((block) => (
-                <Reveal key={block.key} className="mb-6">
-                  {block.type === "h2" && (
-                    <h2 className="heading-md mt-8 mb-4 text-ink">{block.text}</h2>
-                  )}
-                  {block.type === "h3" && (
-                    <h3 className="font-display text-lg font-bold mt-6 mb-3 text-ink">{block.text}</h3>
-                  )}
-                  {block.type === "p" && (
-                    <p className="leading-relaxed text-ink/70">{block.text}</p>
-                  )}
-                  {block.type === "ul" && (
-                    <ul className="mt-2 space-y-2">
-                      {block.items.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2 text-ink/70">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </Reveal>
-              ))
+            {bodyHtml ? (
+              <div
+                className="prose-article leading-relaxed text-ink/70"
+                dangerouslySetInnerHTML={{ __html: bodyHtml }}
+              />
             ) : (
-              [
-                post.excerpt,
-                "In today's increasingly competitive digital landscape, standing still is the same as moving backwards. Businesses that prioritise a premium digital presence consistently outperform their peers — not just in traffic, but in trust, authority and revenue.",
-                "The fundamentals matter more than ever. A fast, accessible, beautifully-designed experience isn't a luxury; it's the baseline customers now expect. Combined with a clear strategy and measurable optimisation, these fundamentals compound into significant, lasting growth over time.",
-                "At Skyntrix, we've helped hundreds of brands turn their digital presence into a growth engine. The winning businesses share one trait: they treat their website and digital channels as strategic assets, continuously refined with data and customer insight.",
-                "Whether you're just starting out or ready to scale, the principles are the same — clarity of message, quality of experience, and consistent iteration. Start with the user. Measure everything. Improve relentlessly."
-              ].map((p, i) => (
-                <Reveal key={i} className="mb-6">
-                  <p className={`leading-relaxed ${i === 0 ? "text-lg text-ink/80" : "text-ink/65"}`}>{p}</p>
-                </Reveal>
-              ))
+              <p className="leading-relaxed text-ink/70">{post.excerpt}</p>
             )}
 
             {relatedService && (
@@ -155,19 +159,12 @@ export default function BlogPost() {
               </Reveal>
             )}
 
-            {!relatedService && (
-              <Reveal className="my-10 rounded-2xl bg-primary/5 p-6 border border-primary/10">
-                <h2 className="heading-md text-ink">Key Takeaway</h2>
-                <p className="mt-2 text-ink/70">Premium digital experiences aren't optional — they're the most reliable competitive advantage available to modern businesses. Invest in quality, measure relentlessly, and grow consistently.</p>
-              </Reveal>
-            )}
-
             <Reveal className="mt-10 flex items-center justify-between border-t border-ink/10 pt-6">
               <Link to={`/authors/${post.authorId || "arjun-skyntrix"}`} className="flex items-center gap-3 group">
                 <span className="grid h-11 w-11 place-items-center rounded-full bg-primary-gradient font-bold text-white">{post.author.split(" ").map((w) => w[0]).join("")}</span>
                 <div>
                   <div className="font-semibold text-ink group-hover:text-primary transition-colors">{post.author}</div>
-                  <div className="text-xs text-ink/50">{authorRole}, Skyntrix</div>
+                  <div className="text-xs text-ink/50">Skyntrix Technologies</div>
                 </div>
               </Link>
               <div className="flex items-center gap-2">

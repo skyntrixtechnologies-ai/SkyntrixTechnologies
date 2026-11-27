@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaArrowRight, FaClock, FaRegNewspaper } from "react-icons/fa6";
 import Reveal from "../components/Reveal";
 import SectionHeading from "../components/SectionHeading";
-import { useSiteData } from "../lib/SiteDataContext";
+import { listBlogPosts } from "../lib/blog-api";
+import { blogCover as coverOf } from "../lib/content";
 
 const formatDate = (value) => {
   const d = value ? new Date(value) : null;
@@ -11,13 +13,16 @@ const formatDate = (value) => {
     : null;
 };
 
-const coverOf = (b) => (/^(https?:)?\/\/|^\//.test(b.thumbnail || "") ? b.thumbnail : "");
-
 export default function BlogPreview() {
-  const { data } = useSiteData();
-  const latest = [...(data?.blogPosts || [])]
-    .sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0))
-    .slice(0, 3);
+  const [latest, setLatest] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listBlogPosts({ limit: 3, sort: "publishedDate:-1" })
+      .then(({ posts }) => { if (!cancelled) setLatest(posts); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   if (!latest.length) return null;
 

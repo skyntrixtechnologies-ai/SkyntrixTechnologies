@@ -1,0 +1,80 @@
+{
+  "migrated": [],
+  "skipped": [
+    {
+      "slug": "how-much-does-website-cost-madurai-2026",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "how-to-choose-web-development-company-madurai",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "ecommerce-website-cost-india",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "mobile-app-development-cost-india",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "seo-friendly-website-development",
+      "reason": "superseded by the full commercial article with the same slug"
+    },
+    {
+      "slug": "what-business-website-should-include",
+      "reason": "superseded by the full commercial article with the same slug"
+    }
+  ],
+  "duplicated": [
+    {
+      "slug": "how-much-does-website-cost-madurai-2026",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "how-to-choose-web-development-company-madurai",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "ecommerce-website-cost-india",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "mobile-app-development-cost-india",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "seo-friendly-website-development",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "what-business-website-should-include",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "why-speed-matters-for-seo",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "ui-ux-trends-2026",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "react-vs-nextjs",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "social-media-strategy-roi",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "mobile-app-vs-website",
+      "reason": "already exists in MongoDB"
+    },
+    {
+      "slug": "seo-for-local-business",
+      "reason": "already exists in MongoDB"
+    }
+  ],
+  "failed": []
+}

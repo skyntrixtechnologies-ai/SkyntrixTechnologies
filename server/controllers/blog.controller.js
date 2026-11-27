@@ -5,6 +5,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/response.js";
 import ApiError from "../utils/ApiError.js";
 import { uploadFile, deleteFile } from "../services/cloudinary.service.js";
+import { listDocuments } from "../services/query.service.js";
 
 const base = createCrudController(Blog, {
   searchFields: ["title", "excerpt", "content", "category", "tags"],
@@ -23,8 +24,28 @@ const withThumbnail = async (req, body) => {
   return body;
 };
 
+/**
+ * Status changes (draft -> published/scheduled/archived) require the
+ * "publish" permission, same rule the dedicated /status route enforces -
+ * closes the bypass where the normal create/update endpoint let any
+ * authenticated admin publish by sending `status` in the body.
+ */
+const canChangeStatus = (req) => {
+  if (!req.admin) return false;
+  if (req.admin.role === "super-admin") return true;
+  return !!req.admin.permissions?.publish;
+};
+
+const assertStatusChangeAllowed = (req, nextStatus, currentStatus) => {
+  if (!nextStatus || nextStatus === currentStatus) return;
+  if (!canChangeStatus(req)) {
+    throw ApiError.forbidden("Missing 'publish' permission to change blog status.");
+  }
+};
+
 export const createBlog = asyncHandler(async (req, res) => {
   const body = req.body;
+  assertStatusChangeAllowed(req, body.status, "draft");
   if (!body.slug) body.slug = await generateUniqueSlug(Blog, body.title);
   if (body.status === "published" && !body.publishedDate) body.publishedDate = new Date();
   if (body.status === "scheduled" && !body.publishedDate && body.scheduledAt) body.publishedDate = body.scheduledAt;
@@ -44,8 +65,15 @@ export const updateBlog = asyncHandler(async (req, res) => {
   if (!existing) throw ApiError.notFound("Blog not found");
 
   const body = req.body;
-  if (!body.slug || body.slug !== existing.slug) {
-    body.slug = await generateUniqueSlug(Blog, body.title || existing.title, existing._id);
+  assertStatusChangeAllowed(req, body.status, existing.status);
+
+  // Slug stays stable across edits unless the admin explicitly sends a
+  // different, non-empty slug - never regenerated just because the title
+  // (or any other field) changed.
+  if (body.slug && body.slug !== existing.slug) {
+    body.slug = await generateUniqueSlug(Blog, body.slug, existing._id);
+  } else {
+    delete body.slug;
   }
   if (body.status === "published" && !existing.publishedDate) body.publishedDate = new Date();
   if (body.status === "scheduled" && body.scheduledAt) body.publishedDate = body.scheduledAt;
@@ -82,7 +110,26 @@ export const fetchBlogBySlug = asyncHandler(async (req, res) => {
   return ApiResponse.ok(res, "Blog post fetched", doc);
 });
 
-export const fetchPublicBlogs = base.listPublic;
+/**
+ * Public listing with blog-specific filters (category, authorId) on top of
+ * the generic search/sort/page/limit support - lets the blog listing page
+ * and author pages query exactly what they need instead of client-side
+ * filtering a capped, unfiltered batch.
+ */
+export const fetchPublicBlogs = asyncHandler(async (req, res) => {
+  const extraFilters = {};
+  if (req.query.category && req.query.category !== "All") extraFilters.category = req.query.category;
+  if (req.query.authorId) extraFilters.authorId = req.query.authorId;
+  if (req.query.excludeSlug) extraFilters.slug = { $ne: req.query.excludeSlug };
+
+  const { data, meta } = await listDocuments(Blog, req, {
+    searchFields: ["title", "excerpt", "content", "category", "tags"],
+    defaultSort: { publishedDate: -1, createdAt: -1 },
+    publicOnly: true,
+    extraFilters,
+  });
+  return ApiResponse.ok(res, "Blog fetched", data, meta);
+});
 export const listBlogs = base.list;
 export const listBlogDetail = base.detail;
 export const updateBlogStatus = base.updateStatus;

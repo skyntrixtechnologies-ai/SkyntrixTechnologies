@@ -15,8 +15,12 @@ const LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const CHART_PERIODS = ["7d", "30d", "90d", "year", "all"];
 const CHART_CACHE_TTL = 60 * 1000; // 60s
 const chartCache = new Map(); // key -> { ts, data }
+let overviewCache = null; // { ts, data }
 
-export const invalidateChartsCache = () => chartCache.clear();
+export const invalidateChartsCache = () => {
+  chartCache.clear();
+  overviewCache = null;
+};
 
 const pad2 = (n) => String(n).padStart(2, "0");
 const dateKey = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
@@ -136,6 +140,10 @@ export const getCharts = asyncHandler(async (req, res) => {
 });
 
 export const getOverview = asyncHandler(async (req, res) => {
+  if (overviewCache && Date.now() - overviewCache.ts < CHART_CACHE_TTL) {
+    return ApiResponse.ok(res, "Dashboard overview", overviewCache.data);
+  }
+
   const [
     totalLeads,
     newLeads,
@@ -168,7 +176,7 @@ export const getOverview = asyncHandler(async (req, res) => {
     Blog.aggregate([{ $group: { _id: null, views: { $sum: "$views" } } }]).then((r) => r[0]?.views || 0),
   ]);
 
-  return ApiResponse.ok(res, "Dashboard overview", {
+  const data = {
     totals: {
       leads: totalLeads,
       newLeads,
@@ -185,7 +193,9 @@ export const getOverview = asyncHandler(async (req, res) => {
       newsletterSubscribers: totalSubscribers,
       totalBlogViews: totalViews,
     },
-  });
+  };
+  overviewCache = { ts: Date.now(), data };
+  return ApiResponse.ok(res, "Dashboard overview", data);
 });
 
 export const getRecentActivity = asyncHandler(async (req, res) => {

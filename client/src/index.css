@@ -71,6 +71,73 @@
   .label {
     @apply inline-flex items-center gap-2 text-sm font-semibold text-primary uppercase tracking-wider;
   }
+
+  /* Sanitized Markdown article bodies (see client/src/lib/content.js). */
+  .prose-article h1 {
+    @apply font-display text-3xl font-bold mt-10 mb-4 text-ink first:mt-0;
+  }
+  .prose-article h2 {
+    @apply font-display text-2xl sm:text-[1.75rem] font-bold mt-10 mb-4 text-ink first:mt-0;
+  }
+  .prose-article h3 {
+    @apply font-display text-lg font-bold mt-7 mb-3 text-ink;
+  }
+  .prose-article p {
+    @apply leading-relaxed text-ink/70 mb-6;
+  }
+  .prose-article ul,
+  .prose-article ol {
+    @apply mb-6 space-y-2 pl-1;
+  }
+  .prose-article ul {
+    list-style: none;
+  }
+  .prose-article ul > li {
+    @apply relative pl-5 text-ink/70;
+  }
+  .prose-article ul > li::before {
+    content: "";
+    @apply absolute left-0 top-[0.6em] h-1.5 w-1.5 rounded-full bg-primary;
+  }
+  .prose-article ol {
+    @apply list-decimal pl-6;
+  }
+  .prose-article ol > li {
+    @apply pl-1 text-ink/70;
+  }
+  .prose-article a {
+    @apply font-semibold text-primary underline decoration-primary/30 underline-offset-2 hover:decoration-primary;
+  }
+  .prose-article strong {
+    @apply font-bold text-ink;
+  }
+  .prose-article blockquote {
+    @apply my-6 rounded-r-xl border-l-4 border-primary bg-primary/5 px-5 py-4 italic text-ink/70;
+  }
+  .prose-article img {
+    @apply my-6 w-full rounded-2xl;
+  }
+  .prose-article pre {
+    @apply my-6 overflow-x-auto rounded-xl bg-ink p-4 text-sm text-white;
+  }
+  .prose-article code {
+    @apply rounded bg-primary/10 px-1.5 py-0.5 text-[0.9em] text-primary;
+  }
+  .prose-article pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+  .prose-article table {
+    @apply my-6 w-full border-collapse overflow-hidden rounded-xl text-sm;
+  }
+  .prose-article th {
+    @apply bg-base px-4 py-2.5 text-left font-semibold text-ink;
+  }
+  .prose-article td {
+    @apply border-t border-line px-4 py-2.5 text-ink/70;
+  }
+  .prose-article hr {
+    @apply my-10 border-line;
+  }
 }
 
 @layer utilities {
@@ -147,6 +214,65 @@
   }
   50% {
     transform: translateY(-10px);
+  }
+}
+
+/* Splash screen logo entrance (client/src/components/SplashScreen.jsx) */
+@keyframes splash-slide-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-slide-right {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes splash-launch-arrow {
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes splash-pop-dot {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-text-reveal {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes splash-load-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  60% {
+    transform: translateX(-25%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+@keyframes splash-pulse-glow {
+  from {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.08);
+    opacity: 1;
   }
 }
 
