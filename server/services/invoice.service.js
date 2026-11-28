@@ -7,6 +7,7 @@ import { nextSequence } from "../models/Counter.model.js";
 import Invoice from "../models/Invoice.model.js";
 import Quotation from "../models/Quotation.model.js";
 import Lead from "../models/Lead.model.js";
+import { computeGrandTotal } from "./quotation.service.js";
 import { sendMail } from "./mailer.service.js";
 import {
   COMPANY,
@@ -76,7 +77,7 @@ const COLORS = {
 // Vertical rhythm. Every section is sized off these primitives so spacing stays
 // consistent and page breaks only ever fall on whole sections.
 const SECTION_TITLE_HEIGHT = 26;
-const SIGNATURE_HEIGHT = 100;
+const SIGNATURE_HEIGHT = 112;
 const SECTION_GAP = 8;
 const CONTENT_TOP = 182;
 const CARD_PAD = 16;
@@ -251,7 +252,9 @@ export const refreshProjectPaymentState = async ({ quotationId, leadId } = {}) =
   }
   if (!quotation) return null;
 
-  const projectTotal = Math.round((Number(quotation.totalAmount) || 0) * 100) / 100;
+  // The reference total includes GST when the quotation has it applied, so
+  // payment tracking is never short by the tax amount.
+  const projectTotal = Math.round(computeGrandTotal(quotation) * 100) / 100;
   const invoices = await Invoice.find({
     quotationId: quotation._id,
     status: { $ne: "cancelled" },
@@ -783,38 +786,38 @@ const drawTerms = (doc, invoice) => {
 };
 
 /**
- * Two-column invoice approval section: company details on the left, a client
- * approval block on the right. Styled to match the existing invoice cards
- * (light fill, thin border, rounded corners) with a vertical divider down the
- * middle.
+ * Two-column invoice approval section: Skyntrix's authorized representative
+ * on the left, a client approval block on the right - both with a name,
+ * signature and date line. Mirrors the equivalent section in the quotation
+ * PDF (quotation.service.js) for a consistent signoff across documents.
  */
 const drawSignature = (doc) => {
   const y = doc.y;
   const boxX = MARGIN;
   const boxW = CONTENT_WIDTH;
   const boxH = SIGNATURE_HEIGHT;
-  const pad = 16;
+  const pad = 14;
   const dividerX = boxX + boxW / 2;
 
   doc.roundedRect(boxX, y, boxW, boxH, 8).fillColor(COLORS.light).fill();
   doc.roundedRect(boxX, y, boxW, boxH, 8).lineWidth(1).strokeColor(COLORS.border).stroke();
   doc.moveTo(dividerX, y).lineTo(dividerX, y + boxH).lineWidth(0.7).strokeColor(COLORS.border).stroke();
 
-  // LEFT — COMPANY DETAILS
+  // LEFT — AUTHORIZED REPRESENTATIVE (Skyntrix)
   const lx = boxX + pad;
-  doc.font(F.semibold).fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.website, lx, y + pad + 54, { lineBreak: false });
-  doc.link(lx, y + pad + 54, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 96002 02825", lx, y + pad + 66, { lineBreak: false });
+  doc.font(F.semibold).fontSize(8.5).fillColor(COLORS.primary).text("AUTHORIZED REPRESENTATIVE", lx, y + pad, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.name, lx, y + pad + 14, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text(`Name: ${COMPANY.founder} (${COMPANY.founderTitle})`, lx, y + pad + 32, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", lx, y + pad + 52, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", lx, y + pad + 72, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL
   const rx = dividerX + pad;
   doc.font(F.semibold).fontSize(8.5).fillColor(COLORS.primary).text("CLIENT APPROVAL", rx, y + pad, { lineBreak: false });
-  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Name: ______________________", rx, y + pad + 26, { lineBreak: false });
-  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", rx, y + pad + 48, { lineBreak: false });
-  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", rx, y + pad + 70, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("Accepted on behalf of the client", rx, y + pad + 14, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Name: ______________________", rx, y + pad + 32, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", rx, y + pad + 52, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", rx, y + pad + 72, { lineBreak: false });
 
   doc.y = y + boxH + 6;
 };

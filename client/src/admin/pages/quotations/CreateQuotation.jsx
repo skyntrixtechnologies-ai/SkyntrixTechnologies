@@ -4,12 +4,14 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { FaArrowLeft, FaSave, FaWhatsapp, FaUndoAlt, FaPlus, FaTrash } from "react-icons/fa";
 import { adminGet, adminPost, adminPut } from "../../api";
 import { useToast } from "../../Toast";
-import { Button, Field, Input, Loading, PageHeader, Textarea } from "../../components/Ui";
+import { Button, Field, Input, Loading, PageHeader, Select, Textarea } from "../../components/Ui";
 import QuotationPreviewModal from "../../components/quotations/QuotationPreviewModal";
 import {
+  computeMilestones,
   formatMoney,
   isValidMobileNumber,
   normalizeMobileNumber,
+  PROJECT_CATEGORY_OPTIONS,
   quoteServicesTotal,
 } from "../../utils/quotation";
 import { pageServiceDescription } from "../../utils/requirementPages";
@@ -21,11 +23,14 @@ const DEFAULT_VALUES = {
   email: "",
   projectName: "",
   projectDescription: "",
+  projectCategory: "website",
   services: [{ name: "", description: "", amount: "" }],
   projectTimeline: "",
   paymentTerms: "",
-  advanceAmount: "",
   totalAmount: "",
+  gstApplicable: false,
+  gstNumber: "",
+  validityDays: 15,
   additionalNotes: "",
 };
 
@@ -56,6 +61,10 @@ export default function CreateQuotation() {
   const watched = watch();
   const totalFromItems = quoteServicesTotal(services);
   const showTotalField = services.length === 0 || services.every((s) => !String(s.amount || "").trim());
+  const effectiveTotal = showTotalField ? Number(watched.totalAmount) || 0 : totalFromItems;
+  const gstApplicable = watch("gstApplicable");
+  const gstAmount = gstApplicable ? Math.round(effectiveTotal * 0.18) : 0;
+  const milestones = computeMilestones(effectiveTotal + gstAmount);
 
   // Prefill from a lead when launched from the pipeline profile.
   useEffect(() => {
@@ -164,11 +173,14 @@ export default function CreateQuotation() {
           email: d.email || "",
           projectName: d.projectName || "",
           projectDescription: d.projectDescription || "",
+          projectCategory: d.projectCategory || "website",
           services: (d.services || []).length ? d.services.map((s) => ({ name: s.name || "", description: s.description || "", amount: s.amount ?? "" })) : DEFAULT_VALUES.services,
           projectTimeline: d.projectTimeline || "",
           paymentTerms: d.paymentTerms || "",
-          advanceAmount: d.advanceAmount ?? "",
           totalAmount: d.totalAmount ?? "",
+          gstApplicable: Boolean(d.gstApplicable),
+          gstNumber: d.gstNumber || "",
+          validityDays: d.validityDays ?? 15,
           additionalNotes: d.additionalNotes || "",
         });
       } catch (e) {
@@ -199,6 +211,7 @@ export default function CreateQuotation() {
     email: values.email.trim() || undefined,
     projectName: values.projectName.trim(),
     projectDescription: values.projectDescription.trim() || undefined,
+    projectCategory: values.projectCategory || "website",
     services: values.services
       .filter((s) => String(s.name || "").trim())
       .map((s) => ({
@@ -208,10 +221,12 @@ export default function CreateQuotation() {
       })),
     projectTimeline: values.projectTimeline.trim() || undefined,
     paymentTerms: values.paymentTerms.trim() || undefined,
-    advanceAmount: Math.max(0, Number(values.advanceAmount) || 0),
     totalAmount: values.services.some((s) => String(s.name || "").trim())
       ? quoteServicesTotal(values.services)
       : Math.max(0, Number(values.totalAmount) || 0),
+    gstApplicable: Boolean(values.gstApplicable),
+    gstNumber: values.gstApplicable ? String(values.gstNumber || "").trim().toUpperCase() : "",
+    validityDays: Math.min(180, Math.max(1, Number(values.validityDays) || 15)),
     additionalNotes: values.additionalNotes.trim() || undefined,
   });
 
@@ -353,6 +368,9 @@ export default function CreateQuotation() {
                 <Input placeholder="3-4 weeks" {...register("projectTimeline")} />
               </Field>
             </div>
+            <Field label="Project Category" hint="Drives the wording used in the PDF's terms (website vs. app vs. software, etc.)">
+              <Select options={PROJECT_CATEGORY_OPTIONS} placeholder={false} {...register("projectCategory")} />
+            </Field>
             <Field label="Project Description" error={errors.projectDescription?.message}>
               <Textarea
                 rows={3}
@@ -416,11 +434,6 @@ export default function CreateQuotation() {
           )}
 
           <div className="mt-4 flex flex-wrap items-end gap-4">
-            <div className="w-full sm:w-64">
-              <Field label="Advance Amount (Rs.)">
-                <Input type="number" min="0" placeholder="40000" {...register("advanceAmount")} />
-              </Field>
-            </div>
             {showTotalField ? (
               <div className="w-full sm:w-64">
                 <Field label="Total Amount (Rs.)" required error={errors.totalAmount?.message} hint="Used when no line items are added">
@@ -456,14 +469,63 @@ export default function CreateQuotation() {
         <div className="card p-5">
           <h2 className="mb-4 font-display text-sm font-bold uppercase tracking-wide text-ink/60">Payment & terms</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Payment Terms" error={errors.paymentTerms?.message} hint="e.g. 50% advance, 50% on delivery">
-              <Textarea rows={2} placeholder="50% advance, 50% on delivery" {...register("paymentTerms", { maxLength: { value: 1000, message: "Payment terms must be 1000 characters or fewer" } })} />
+            <Field label="Payment Terms" error={errors.paymentTerms?.message} hint="Shown as-is on the PDF; leave blank to show 'See Payment Schedule below'">
+              <Textarea rows={2} placeholder="Leave blank to use the computed payment schedule" {...register("paymentTerms", { maxLength: { value: 1000, message: "Payment terms must be 1000 characters or fewer" } })} />
             </Field>
-            <div className="space-y-4">
-              <Field label="Additional Notes" error={errors.additionalNotes?.message}>
-                <Textarea rows={2} placeholder="Optional notes, inclusions or exclusions..." {...register("additionalNotes", { maxLength: { value: 3000, message: "Additional notes must be 3000 characters or fewer" } })} />
-              </Field>
+            <Field label="Quotation Validity (days)" error={errors.validityDays?.message} hint="How many days this quotation stays valid from the issue date">
+              <Input
+                type="number"
+                min="1"
+                max="180"
+                {...register("validityDays", { min: { value: 1, message: "Must be at least 1 day" }, max: { value: 180, message: "Must be 180 days or fewer" } })}
+              />
+            </Field>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-primary/15 bg-primary/5 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-ink/70">Payment Schedule (auto-calculated)</span>
+              <span className="text-xs text-ink/40">50% / 30% / 20% of the grand total{gstApplicable ? " incl. GST" : ""}</span>
             </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-primary">50% Advance</div>
+                <div className="mt-0.5 font-bold text-ink">{formatMoney(milestones.advance)}</div>
+              </div>
+              <div className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-primary">30% Development</div>
+                <div className="mt-0.5 font-bold text-ink">{formatMoney(milestones.development)}</div>
+              </div>
+              <div className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-primary">20% Final</div>
+                <div className="mt-0.5 font-bold text-ink">{formatMoney(milestones.final)}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-ink/70">
+                <input type="checkbox" className="h-4 w-4 rounded border-base text-primary focus:ring-primary/40" {...register("gstApplicable")} />
+                GST Applicable
+              </label>
+              {gstApplicable && (
+                <Input
+                  placeholder="e.g. 33AAACS1234Z1Z5"
+                  className="mt-1"
+                  {...register("gstNumber", {
+                    pattern: {
+                      value: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+                      message: "Enter a valid 15-character GSTIN",
+                    },
+                  })}
+                />
+              )}
+              {errors.gstNumber && <span className="mt-1 block text-xs text-red-600">{errors.gstNumber.message}</span>}
+            </div>
+            <Field label="Additional Notes" error={errors.additionalNotes?.message}>
+              <Textarea rows={2} placeholder="Optional notes, inclusions or exclusions..." {...register("additionalNotes", { maxLength: { value: 3000, message: "Additional notes must be 3000 characters or fewer" } })} />
+            </Field>
           </div>
         </div>
 

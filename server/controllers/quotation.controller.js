@@ -17,6 +17,7 @@ import {
   sendQuotationWhatsApp,
   deleteQuotationPdf,
   buildQuotationMessage,
+  computeMilestones,
 } from "../services/quotation.service.js";
 import { invalidateChartsCache } from "./dashboard.controller.js";
 import { moveLeadStage } from "../services/pipeline.service.js";
@@ -33,11 +34,14 @@ const QUOTATION_KEYS = [
   "email",
   "projectName",
   "projectDescription",
+  "projectCategory",
   "services",
   "projectTimeline",
   "paymentTerms",
-  "advanceAmount",
   "totalAmount",
+  "gstApplicable",
+  "gstNumber",
+  "validityDays",
   "additionalNotes",
 ];
 
@@ -78,7 +82,9 @@ const normalizePayload = (payload) => {
   const clean = { ...payload };
   if (clean.mobile) clean.mobile = toE164(clean.mobile);
   if (clean.services) clean.services = normalizeServices(clean.services);
-  if (clean.advanceAmount !== undefined) clean.advanceAmount = Math.max(0, Number(clean.advanceAmount) || 0);
+  if (clean.gstApplicable !== undefined) clean.gstApplicable = Boolean(clean.gstApplicable);
+  if (clean.gstNumber !== undefined) clean.gstNumber = String(clean.gstNumber || "").trim().toUpperCase().slice(0, 20);
+  if (clean.validityDays !== undefined) clean.validityDays = Math.min(180, Math.max(1, Number(clean.validityDays) || 15));
 
   // The grand total is computed from line items when services are present,
   // otherwise the admin-entered total is used.
@@ -87,6 +93,12 @@ const normalizePayload = (payload) => {
   } else {
     clean.totalAmount = Math.max(0, Number(clean.totalAmount) || 0);
   }
+
+  // Milestone amounts are always derived from the grand total - never trust a
+  // client-supplied advance amount, which is how the original template ended
+  // up with an advance that didn't match any sensible percentage of the total.
+  const gstAmount = clean.gstApplicable ? Math.round(clean.totalAmount * 0.18) : 0;
+  clean.advanceAmount = computeMilestones(clean.totalAmount + gstAmount).advance;
 
   return clean;
 };

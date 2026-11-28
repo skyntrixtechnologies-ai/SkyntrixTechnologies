@@ -4,6 +4,20 @@ export const WHATSAPP_STATUS = ["pending", "sent", "awaiting_reply", "failed"];
 export const QUOTATION_STATUS = ["draft", "sent", "failed"];
 export const QUOTATION_ACCEPTANCE_STATUS = ["pending", "accepted", "rejected"];
 
+// Drives the reusable wording in the generated PDF (see PROJECT_CATEGORY_META
+// in quotation.service.js) so one template serves every service line the
+// company sells instead of hardcoding "website" throughout.
+export const PROJECT_CATEGORIES = [
+  "website",
+  "mobile_app",
+  "billing_software",
+  "crm_erp",
+  "digital_marketing",
+  "seo",
+  "ui_ux",
+  "other",
+];
+
 const serviceItemSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true, required: true },
@@ -25,11 +39,23 @@ const quotationSchema = new mongoose.Schema(
     email: { type: String, trim: true, default: "", lowercase: true },
     projectName: { type: String, required: true, trim: true },
     projectDescription: { type: String, trim: true, default: "" },
+    projectCategory: { type: String, enum: PROJECT_CATEGORIES, default: "website" },
     services: { type: [serviceItemSchema], default: [] },
     projectTimeline: { type: String, trim: true, default: "" },
     paymentTerms: { type: String, trim: true, default: "" },
+    // Milestone amounts (50% advance / 30% development / 20% final) are always
+    // derived server-side from totalAmount - see computeMilestones() in
+    // quotation.service.js. advanceAmount is kept (not user-editable) only for
+    // backwards-compatible list/stat queries that sort or filter on it.
     advanceAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
+    // Tax is never assumed: the PDF only shows a GST line when gstApplicable is
+    // explicitly set and a gstNumber is on file.
+    gstApplicable: { type: Boolean, default: false },
+    gstNumber: { type: String, trim: true, uppercase: true, default: "" },
+    // Quotation validity window in days from createdAt; rendered as a "valid
+    // until" date on the PDF instead of being silently open-ended.
+    validityDays: { type: Number, default: 15, min: 1, max: 180 },
     additionalNotes: { type: String, trim: true, default: "" },
 
     pdfUrl: { type: String, default: "" },

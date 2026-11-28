@@ -11,8 +11,10 @@ import { useToast } from "../../Toast";
 import { Button, EmptyState, Loading, Modal, PageHeader, Textarea } from "../../components/Ui";
 import QuotationPreviewModal from "../../components/quotations/QuotationPreviewModal";
 import {
-  formatMoney, formatMobileNumber, fullDateTime, timeAgo,
+  computeMilestones,
+  formatMoney, formatMobileNumber, formatDate, fullDateTime, timeAgo,
   downloadQuotationPdf,
+  PROJECT_CATEGORY_OPTIONS,
 } from "../../utils/quotation";
 
 const STATUS_BADGE = {
@@ -168,12 +170,23 @@ export default function QuotationDetail() {
   if (loading) return <Loading label="Loading quotation..." />;
   if (!quotation) return <EmptyState title="Quotation not found" />;
 
+  const categoryLabel = PROJECT_CATEGORY_OPTIONS.find((o) => o.value === quotation.projectCategory)?.label || "Website Development";
+  const validUntil = (() => {
+    const d = new Date(quotation.createdAt || Date.now());
+    d.setDate(d.getDate() + (Number(quotation.validityDays) || 15));
+    return formatDate(d);
+  })();
+  const gstAmount = quotation.gstApplicable ? Math.round(Number(quotation.totalAmount || 0) * 0.18) : 0;
+  const milestones = computeMilestones(Number(quotation.totalAmount || 0) + gstAmount);
+
   const infoRows = [
     { icon: FaBuilding, label: "Business", value: quotation.businessName || "—" },
     { icon: FaPhoneAlt, label: "Mobile", value: formatMobileNumber(quotation.mobile), href: `tel:${quotation.mobile}` },
     { icon: FaEnvelope, label: "Email", value: quotation.email || "—", href: quotation.email ? `mailto:${quotation.email}` : null },
     { icon: FaProjectDiagram, label: "Project", value: quotation.projectName },
+    { icon: FaProjectDiagram, label: "Category", value: categoryLabel },
     { icon: FaCalendarCheck, label: "Timeline", value: quotation.projectTimeline || "—" },
+    { icon: FaCalendarCheck, label: "Valid until", value: validUntil },
     { icon: FaUserTie, label: "Created by", value: quotation.createdByName || "System" },
     { icon: FaCalendarCheck, label: "Created", value: fullDateTime(quotation.createdAt) },
     ...(quotation.sentAt ? [{ icon: FaWhatsapp, label: "Sent at", value: fullDateTime(quotation.sentAt) }] : []),
@@ -229,7 +242,7 @@ export default function QuotationDetail() {
         <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${ACCEPTANCE_BADGE[quotation.acceptanceStatus] || ACCEPTANCE_BADGE.pending}`}>
           Client: {quotation.acceptanceStatus || "pending"}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink">Grand Total: <span className="text-primary">{formatMoney(quotation.totalAmount)}</span></span>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink">Grand Total: <span className="text-primary">{formatMoney(quotation.totalAmount + gstAmount)}</span></span>
         {quotation.acceptanceStatus === "rejected" && quotation.rejectionReason && (
           <span className="text-xs text-red-600" title={quotation.rejectionReason}>
             Rejection reason: {quotation.rejectionReason}
@@ -273,10 +286,15 @@ export default function QuotationDetail() {
           )}
 
           <div className="card p-5">
-            <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-ink/60">Payment</h2>
+            <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-ink/60">Payment schedule</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-ink/50">Advance amount</span><span className="font-semibold text-ink">{formatMoney(quotation.advanceAmount)}</span></div>
-              <div className="flex justify-between"><span className="text-ink/50">Payment terms</span><span className="max-w-[60%] text-right text-ink/80">{quotation.paymentTerms || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-ink/50">50% Advance</span><span className="font-semibold text-ink">{formatMoney(milestones.advance)}</span></div>
+              <div className="flex justify-between"><span className="text-ink/50">30% Development</span><span className="font-semibold text-ink">{formatMoney(milestones.development)}</span></div>
+              <div className="flex justify-between"><span className="text-ink/50">20% Final</span><span className="font-semibold text-ink">{formatMoney(milestones.final)}</span></div>
+              {quotation.gstApplicable && (
+                <div className="flex justify-between border-t border-base pt-2"><span className="text-ink/50">GST (18%)</span><span className="font-semibold text-ink">{formatMoney(gstAmount)}{quotation.gstNumber ? ` · ${quotation.gstNumber}` : ""}</span></div>
+              )}
+              <div className="flex justify-between border-t border-base pt-2"><span className="text-ink/50">Payment terms</span><span className="max-w-[60%] text-right text-ink/80">{quotation.paymentTerms || "See payment schedule above"}</span></div>
             </div>
           </div>
         </div>
@@ -311,10 +329,22 @@ export default function QuotationDetail() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-primary/5">
-                    <tr>
+                  <tfoot>
+                    {quotation.gstApplicable && (
+                      <>
+                        <tr>
+                          <td colSpan={3} className="px-4 py-2 text-right text-ink/50">Subtotal</td>
+                          <td className="whitespace-nowrap px-4 py-2 text-right text-ink">{formatMoney(quotation.totalAmount)}</td>
+                        </tr>
+                        <tr>
+                          <td colSpan={3} className="px-4 py-2 text-right text-ink/50">GST (18%){quotation.gstNumber ? ` · ${quotation.gstNumber}` : ""}</td>
+                          <td className="whitespace-nowrap px-4 py-2 text-right text-ink">{formatMoney(gstAmount)}</td>
+                        </tr>
+                      </>
+                    )}
+                    <tr className="bg-primary/5">
                       <td colSpan={3} className="px-4 py-3 text-right font-bold text-ink">GRAND TOTAL</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-primary">{formatMoney(quotation.totalAmount)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-primary">{formatMoney(quotation.totalAmount + gstAmount)}</td>
                     </tr>
                   </tfoot>
                 </table>

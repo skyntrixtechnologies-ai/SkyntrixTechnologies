@@ -53,7 +53,7 @@ export default function Navbar() {
       }`}
     >
       <nav className="container-x flex h-20 items-center justify-between gap-4" aria-label="Main">
-        <Logo />
+        <Logo full />
 
         <div className="hidden items-center gap-0.5 rounded-full border border-line/70 bg-white/70 p-1 lg:flex">
           {links.map((l) => (

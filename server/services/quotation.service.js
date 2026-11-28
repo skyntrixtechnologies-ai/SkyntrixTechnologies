@@ -71,12 +71,68 @@ export const COMPANY = {
   tagline: "Building Digital Experiences That Drive Growth",
   email: "skyntrixtechnologies@gmail.com",
   phone: "+91 9600202825",
-  phone2: "+91 9790586747",
+  // phone2: "+91 9790586747",
   website: env.whatsapp.website || `${env.siteUrl}/`,
   address: "Madurai, Tamil Nadu, India",
   founder: "Senthil Kumar",
   founderTitle: "Founder",
 };
+
+/**
+ * Fixed milestone split applied to every quotation's grand total: 50% advance
+ * to start, 30% at the development milestone, 20% on final delivery. The 30%
+ * milestone is a project-stage checkpoint, not conditional on whether the
+ * client requests revisions - see buildQuotationTerms() below.
+ */
+export const MILESTONE_SPLIT = { advance: 0.5, development: 0.3, final: 0.2 };
+
+/**
+ * Always derive milestone amounts from the grand total instead of trusting a
+ * manually-typed advance amount. Rounds to the nearest rupee and folds any
+ * rounding remainder into the final milestone so the three amounts always sum
+ * to exactly totalAmount.
+ */
+/**
+ * The amount the client actually owes: totalAmount plus 18% GST when the
+ * quotation has gstApplicable set. Used wherever a quotation's grand total is
+ * the reference figure for payment tracking (invoices, milestones), so GST
+ * is never silently dropped from the amount owed.
+ */
+export const computeGrandTotal = (quotation) => {
+  const subtotal = Number(quotation?.totalAmount) || 0;
+  const gstAmount = quotation?.gstApplicable ? Math.round(subtotal * 0.18) : 0;
+  return subtotal + gstAmount;
+};
+
+export const computeMilestones = (totalAmount) => {
+  const total = Math.max(0, Number(totalAmount) || 0);
+  const advance = Math.round(total * MILESTONE_SPLIT.advance);
+  const development = Math.round(total * MILESTONE_SPLIT.development);
+  const final = total - advance - development;
+  return { advance, development, final, total };
+};
+
+/**
+ * Reusable wording per project category so the same quotation template reads
+ * naturally for a website, a mobile app, billing software, a CRM/ERP system,
+ * a marketing engagement, SEO, UI/UX design, or anything else - instead of
+ * hardcoding "website" throughout the terms and scope copy.
+ */
+export const PROJECT_CATEGORY_META = {
+  website: { label: "Website Development", noun: "website", nounCap: "Website", verb: "deployed and made live" },
+  mobile_app: { label: "Mobile App Development", noun: "app", nounCap: "App", verb: "published and made live" },
+  billing_software: { label: "Billing Software", noun: "software", nounCap: "Software", verb: "deployed and made live" },
+  crm_erp: { label: "CRM / ERP Development", noun: "system", nounCap: "System", verb: "deployed and made live" },
+  digital_marketing: { label: "Digital Marketing", noun: "campaign", nounCap: "Campaign", verb: "launched" },
+  seo: { label: "SEO Services", noun: "SEO engagement", nounCap: "Engagement", verb: "activated" },
+  ui_ux: { label: "UI/UX Design", noun: "design", nounCap: "Design", verb: "finalized and handed over" },
+  other: { label: "Other IT Services", noun: "project", nounCap: "Project", verb: "delivered" },
+};
+export const PROJECT_CATEGORY_OPTIONS = Object.entries(PROJECT_CATEGORY_META).map(([value, meta]) => ({
+  value,
+  label: meta.label,
+}));
+const categoryMeta = (quotation) => PROJECT_CATEGORY_META[quotation.projectCategory] || PROJECT_CATEGORY_META.website;
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
@@ -103,92 +159,135 @@ export const formatDate = (value) => {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
+const addDays = (value, days) => {
+  const d = new Date(value || new Date());
+  d.setDate(d.getDate() + (Number(days) || 0));
+  return d;
+};
+
 // Layout metrics (pt). Everything is derived from these so spacing stays
 // consistent across sections and pages.
 const SECTION_TITLE_HEIGHT = 30;
-const SIGNATURE_HEIGHT = 100;
+const SIGNATURE_HEIGHT = 112;
 const SECTION_GAP = 10;
 
-const QUOTATION_TERMS = [
-  {
-    heading: "1. Advance Payment",
-    items: [
-      { type: "para", text: "A 50% advance payment is required to initiate the project." },
-    ],
-  },
-  {
-    heading: "2. Project Review & Payment Process",
-    items: [
-      { type: "para", text: "After the initial development, a model/preview of the website will be shared with the client for review." },
-      { type: "bullet", text: "If corrections or revisions are required within the agreed scope, the client shall pay the next 30% milestone payment, after which the requested corrections will be completed." },
-      { type: "bullet", text: "Once the corrections are completed and the website is finalized, the remaining 20% final payment must be settled before the website is made live." },
-      { type: "bullet", text: "If no corrections are required, the remaining 50% balance payment must be settled before the website is made live." },
-    ],
-  },
-  {
-    heading: "3. Project Commencement",
-    items: [
-      { type: "para", text: "Project development will begin only after confirmation and receipt of the advance payment." },
-    ],
-  },
-  {
-    heading: "4. Additional Requirements",
-    items: [
-      { type: "para", text: "Any additional features, functionalities, pages, or requirements outside the originally agreed project scope will be charged separately." },
-    ],
-  },
-  {
-    heading: "5. Third-Party Charges",
-    items: [
-      { type: "para", text: "Any third-party charges, including domain, hosting, payment gateway, SMS, email services, APIs, plugins, subscriptions, or other external services, will be borne by the client." },
-    ],
-  },
-  {
-    heading: "6. Client Responsibilities",
-    items: [
-      { type: "para", text: "The client is responsible for providing all required content, images, logos, product details, business information, and other project materials within the agreed timeline." },
-    ],
-  },
-  {
-    heading: "7. Content & Approval Delays",
-    items: [
-      { type: "para", text: "Any delay in providing required content, feedback, approvals, or confirmations from the client may affect the project delivery timeline." },
-    ],
-  },
-  {
-    heading: "8. Revisions",
-    items: [
-      { type: "para", text: "Minor revisions within the agreed project scope are included. Major design changes, new requirements, or revisions beyond the agreed scope may incur additional charges." },
-    ],
-  },
-  {
-    heading: "9. Cancellation & Refund Policy",
-    items: [
-      { type: "para", text: "Once project development has commenced, the 50% advance payment is non-refundable. If the client decides to discontinue the project after development has started, the advance payment will not be refunded. Any remaining amount paid by the client, after deducting the applicable charges for work completed up to the cancellation date, will be refunded. The completed project assets will be handed over after settlement of all applicable dues." },
-    ],
-  },
-  {
-    heading: "10. Final Delivery & Ownership",
-    items: [
-      { type: "para", text: "Final project files/source code and deployment will be provided only after full payment has been settled. Project ownership and handover will be completed upon receipt of the full project payment." },
-    ],
-  },
-  {
-    heading: "11. Optional Maintenance & Support",
-    items: [
-      { type: "para", text: "Maintenance and ongoing technical support are optional and are not included in the project development charges unless specifically mentioned in the quotation." },
-      { type: "para", text: "If the client chooses a maintenance plan, it will be charged separately based on the selected plan and agreed services." },
-      { type: "para", text: "Maintenance may include:" },
-      { type: "bullet", text: "Website bug fixing and technical support" },
-      { type: "bullet", text: "Minor content or text updates" },
-      { type: "bullet", text: "Minor UI adjustments" },
-      { type: "bullet", text: "Basic website monitoring" },
-      { type: "bullet", text: "Deployment and hosting-related support" },
-      { type: "para", text: "Major feature additions, new pages, redesigns, third-party integrations, or functionality changes are not included in maintenance and will be charged separately." },
-      { type: "para", text: "If the client does not opt for a maintenance plan, any future updates, bug fixes, technical support, or modifications after project handover may be charged separately based on the work required." },
-    ],
-  },
-];
+/**
+ * Builds the Terms & Conditions for a quotation. Parameterized by project
+ * category (so "website" wording never leaks into a mobile app / CRM /
+ * marketing quotation) and by the milestone amounts computed from the grand
+ * total, so every figure quoted in the terms matches the cost table exactly.
+ *
+ * The 30% development milestone is a fixed project-stage checkpoint - it is
+ * never made conditional on whether the client requests revisions. Revisions
+ * are governed entirely by the separate "Revisions Policy" clause below.
+ */
+const buildQuotationTerms = (quotation, milestones) => {
+  const meta = categoryMeta(quotation);
+  const hasDomainService = (quotation.services || []).some((s) =>
+    /domain|hosting/i.test(`${s.name || ""} ${s.description || ""}`)
+  );
+  const validUntil = formatDate(addDays(quotation.createdAt || new Date(), quotation.validityDays || 15));
+
+  return [
+    {
+      heading: "1. Advance Payment",
+      items: [
+        { type: "para", text: `A 50% advance payment (${formatMoney(milestones.advance)}) is required to initiate the ${meta.noun} project.` },
+      ],
+    },
+    {
+      heading: "2. Project Commencement",
+      items: [
+        { type: "para", text: "Project development will begin only after confirmation and receipt of the advance payment." },
+      ],
+    },
+    {
+      heading: "3. Development and Client Review",
+      items: [
+        { type: "para", text: `Once development reaches the agreed midpoint, a working preview of the ${meta.noun} will be shared with the client for review.` },
+        { type: "para", text: "Client feedback and revisions within the agreed scope are addressed at this stage before the project moves to final delivery." },
+      ],
+    },
+    {
+      heading: "4. Payment Milestones",
+      items: [
+        { type: "para", text: "Payment is collected in three fixed milestones, calculated on the grand total and due regardless of whether revisions are requested:" },
+        { type: "bullet", text: `50% Advance - ${formatMoney(milestones.advance)} - due to commence the project.` },
+        { type: "bullet", text: `30% Development Milestone - ${formatMoney(milestones.development)} - due once the development/review stage above is reached.` },
+        { type: "bullet", text: `20% Final Payment - ${formatMoney(milestones.final)} - due before the ${meta.noun} is ${meta.verb}.` },
+      ],
+    },
+    {
+      heading: "5. Additional Requirements",
+      items: [
+        { type: "para", text: "Any additional features, functionalities, pages, or requirements outside the originally agreed project scope will be charged separately." },
+      ],
+    },
+    {
+      heading: "6. Third-Party Charges",
+      items: [
+        { type: "para", text: "Any third-party charges, including domain, hosting, payment gateway, SMS, email services, APIs, plugins, subscriptions, or other external services, will be borne by the client unless explicitly listed as included in the cost breakdown above." },
+      ],
+    },
+    {
+      heading: "7. Client Responsibilities",
+      items: [
+        { type: "para", text: "The client is responsible for providing all required content, images, logos, product details, business information, and other project materials within the agreed timeline. Any delay in providing content, feedback, approvals, or confirmations may affect the delivery timeline below." },
+      ],
+    },
+    {
+      heading: "8. Delivery Timeline",
+      items: [
+        { type: "para", text: `The estimated delivery timeline is ${quotation.projectTimeline || "as agreed with the client"}, counted from project commencement and subject to the client responsibilities above.` },
+      ],
+    },
+    {
+      heading: "9. Revisions Policy",
+      items: [
+        { type: "para", text: "Minor revisions within the agreed project scope are included during the development and client review stage. Major design changes, new requirements, or revisions beyond the agreed scope may incur additional charges and are quoted separately - revisions do not change the payment milestones in Section 4." },
+      ],
+    },
+    {
+      heading: "10. Cancellation and Refund Policy",
+      items: [
+        { type: "para", text: "Once project development has commenced, the advance payment is non-refundable. If the client discontinues the project after development has started, any amount paid beyond the advance, less the cost of work completed up to the cancellation date, will be refunded. Completed project assets are handed over only after settlement of all applicable dues." },
+      ],
+    },
+    {
+      heading: "11. Final Delivery and Ownership",
+      items: [
+        { type: "para", text: `Final project files/source code and deployment will be provided only after the final payment has been settled. Ownership of the ${meta.noun} and handover of project assets are completed upon receipt of the full payment.` },
+      ],
+    },
+    {
+      heading: "12. Bug Fixing and Technical Support",
+      items: [
+        { type: "para", text: "Bug fixes arising from the original build are covered free of charge for 30 days after final delivery. Beyond that period, ongoing technical support and maintenance are optional and charged separately based on the selected plan unless specifically included in this quotation." },
+        { type: "para", text: "An optional maintenance plan may include:" },
+        { type: "bullet", text: "Bug fixing and technical support" },
+        { type: "bullet", text: "Minor content or text updates" },
+        { type: "bullet", text: "Minor UI adjustments" },
+        { type: "bullet", text: "Basic monitoring" },
+        { type: "bullet", text: "Deployment and hosting-related support" },
+        { type: "para", text: "Major feature additions, new pages, redesigns, third-party integrations, or functionality changes are not included in maintenance and are charged separately." },
+      ],
+    },
+    {
+      heading: "13. Quotation Validity",
+      items: [
+        { type: "para", text: `This quotation is valid for ${quotation.validityDays || 15} days from the date of issue, i.e. until ${validUntil}. Prices and terms may be revised if accepted after this date.` },
+      ],
+    },
+    {
+      heading: "14. Domain and Hosting Renewal",
+      items: [
+        hasDomainService
+          ? { type: "para", text: "Where domain registration and/or hosting are included in the cost breakdown above, they cover the first year from the date of purchase. Renewal of the domain and hosting in subsequent years is the client's responsibility unless covered under an active maintenance plan." }
+          : { type: "para", text: "This quotation does not include domain registration or hosting. Where the client arranges these separately, their ongoing renewal remains the client's responsibility unless covered under an active maintenance plan." },
+      ],
+    },
+  ];
+};
 
 /**
  * Auto-generate a unique quotation number, e.g. SKT-2026-0001.
@@ -312,7 +411,7 @@ const drawHeader = (doc, quotation) => {
     pending: { bg: "#1E293B", fg: "#FDE68A", text: "AWAITING REVIEW" },
   };
   const cfg = pillCfg[quotation.acceptanceStatus] || pillCfg.pending;
-  const pillW = doc.font(F.semibold).fontSize(7.5).widthOfString(cfg.text) + 18;
+  const pillW = doc.font(F.semibold).fontSize(7.5).widthOfString(cfg.text, { characterSpacing: 0.6 }) + 18;
   doc.roundedRect(PAGE_WIDTH - MARGIN - pillW, 97, pillW, 15, 7.5).fillColor(cfg.bg).fill();
   doc.font(F.semibold).fontSize(7.5).fillColor(cfg.fg)
     .text(cfg.text, PAGE_WIDTH - MARGIN - pillW + 9, 99.5, { width: pillW - 18, align: "center", characterSpacing: 0.6 });
@@ -354,11 +453,13 @@ const drawInfoCard = (doc, quotation) => {
   doc.text("CLIENT DETAILS", leftX, y + 10);
   doc.text("PROJECT DETAILS", rightX, y + 10);
 
+  const validUntil = formatDate(addDays(quotation.createdAt || new Date(), quotation.validityDays || 15));
+  const paymentTermsDisplay = (quotation.paymentTerms || "").trim() || "See Payment Schedule below";
   const rows = [
     [["NAME", quotation.clientName], ["PROJECT", quotation.projectName]],
     [["BUSINESS", quotation.businessName], ["TIMELINE", quotation.projectTimeline]],
-    [["MOBILE", formatMobileDisplay(quotation.mobile)], ["PAYMENT TERMS", quotation.paymentTerms]],
-    [["EMAIL", quotation.email], ["ADVANCE", quotation.advanceAmount ? formatMoney(quotation.advanceAmount) : "—"]],
+    [["MOBILE", formatMobileDisplay(quotation.mobile)], ["PAYMENT TERMS", paymentTermsDisplay]],
+    [["EMAIL", quotation.email], ["VALID UNTIL", validUntil]],
   ];
 
   rows.forEach((pair, i) => {
@@ -374,15 +475,18 @@ const drawInfoCard = (doc, quotation) => {
 };
 
 const drawScope = (doc, quotation) => {
+  const meta = categoryMeta(quotation);
   const desc = (quotation.projectDescription || "No additional description provided.").trim();
   const descH = doc.font(F.regular).fontSize(9).heightOfString(desc, { width: CONTENT_WIDTH });
   const nameH = 15;
-  ensureSpace(doc, SECTION_TITLE_HEIGHT + nameH + descH + SECTION_GAP);
+  const categoryH = 12;
+  ensureSpace(doc, SECTION_TITLE_HEIGHT + nameH + categoryH + descH + SECTION_GAP);
   drawSectionTitle(doc, "Project Scope");
   const y0 = doc.y;
   doc.font(F.bold).fontSize(10).fillColor(COLORS.ink).text(quotation.projectName, MARGIN, y0, { width: CONTENT_WIDTH });
-  doc.font(F.regular).fontSize(9).fillColor(COLORS.muted).text(desc, MARGIN, y0 + 15, { width: CONTENT_WIDTH, lineGap: 2 });
-  doc.y = y0 + 15 + descH + SECTION_GAP;
+  doc.font(F.semibold).fontSize(7.5).fillColor(COLORS.primary).text(meta.label.toUpperCase(), MARGIN, y0 + 14, { width: CONTENT_WIDTH, characterSpacing: 0.4 });
+  doc.font(F.regular).fontSize(9).fillColor(COLORS.muted).text(desc, MARGIN, y0 + 14 + categoryH, { width: CONTENT_WIDTH, lineGap: 2 });
+  doc.y = y0 + 14 + categoryH + descH + SECTION_GAP;
 };
 
 const drawTableHeader = (doc, widths, y) => {
@@ -395,13 +499,14 @@ const drawTableHeader = (doc, widths, y) => {
   doc.text("AMOUNT", rowStart + widths[0] + widths[1] + widths[2] + 6, y + 6, { width: widths[3] - 12, align: "right" });
 };
 
-const drawCostTable = (doc, quotation) => {
+const drawCostTable = (doc, quotation, { subtotal, gstAmount, grandTotal }) => {
   const widths = [30, 155, 220, 100];
   const rowStart = MARGIN;
   const services = (quotation.services || []).filter((s) => s && s.name);
   const cellHeight = (desc) => Math.max(22, doc.font(F.regular).fontSize(8).heightOfString(desc, { width: widths[2] - 12 }) + 12);
   const rowHeights = services.length ? services.map((s) => cellHeight((s.description || "").trim() || "—")) : [22];
-  const tableH = SECTION_TITLE_HEIGHT + 20 + rowHeights.reduce((a, b) => a + b, 0) + 26 + 6;
+  const extraRows = quotation.gstApplicable ? 2 : 0; // subtotal + GST rows before the grand total
+  const tableH = SECTION_TITLE_HEIGHT + 20 + rowHeights.reduce((a, b) => a + b, 0) + extraRows * 20 + 26 + 6;
   // If the whole table cannot fit on the current page, move the title with it.
   ensureSpace(doc, tableH);
   drawSectionTitle(doc, "Service Cost Breakdown");
@@ -436,7 +541,30 @@ const drawCostTable = (doc, quotation) => {
     });
   }
 
-  const total = services.length ? services.reduce((a, s) => a + (Number(s.amount) || 0), 0) : Number(quotation.totalAmount) || 0;
+  const summaryRowH = 20;
+  const ensureSummaryRow = () => {
+    if (cy + summaryRowH > doc.page.maxY()) {
+      doc.addPage();
+      headerY = doc.y;
+      drawTableHeader(doc, widths, headerY);
+      cy = headerY + 20;
+    }
+  };
+
+  if (quotation.gstApplicable) {
+    ensureSummaryRow();
+    doc.rect(rowStart, cy, CONTENT_WIDTH, summaryRowH).fillColor(COLORS.white).fill();
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text("Subtotal", rowStart + 12, cy + 5, { width: 200 });
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.ink).text(formatMoney(subtotal), rowStart + CONTENT_WIDTH - 200, cy + 5, { width: 188, align: "right" });
+    cy += summaryRowH;
+
+    ensureSummaryRow();
+    doc.rect(rowStart, cy, CONTENT_WIDTH, summaryRowH).fillColor(COLORS.white).fill();
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.muted).text(`GST (18%)${quotation.gstNumber ? ` - GSTIN ${quotation.gstNumber}` : ""}`, rowStart + 12, cy + 5, { width: 260 });
+    doc.font(F.regular).fontSize(8.5).fillColor(COLORS.ink).text(formatMoney(gstAmount), rowStart + CONTENT_WIDTH - 200, cy + 5, { width: 188, align: "right" });
+    cy += summaryRowH;
+  }
+
   if (cy + 26 > doc.page.maxY()) {
     doc.addPage();
     headerY = doc.y;
@@ -445,21 +573,36 @@ const drawCostTable = (doc, quotation) => {
   }
   doc.rect(rowStart, cy, CONTENT_WIDTH, 26).fillColor(COLORS.softPurple).fill();
   doc.font(F.bold).fontSize(10).fillColor(COLORS.ink).text("GRAND TOTAL", rowStart + 12, cy + 7, { width: 200 });
-  doc.font(F.bold).fontSize(11).fillColor(COLORS.primary).text(formatMoney(total), rowStart + CONTENT_WIDTH - 200, cy + 5, { width: 188, align: "right" });
+  doc.font(F.bold).fontSize(11).fillColor(COLORS.primary).text(formatMoney(grandTotal), rowStart + CONTENT_WIDTH - 200, cy + 5, { width: 188, align: "right" });
+  cy += 26;
 
-  doc.y = cy + 26 + SECTION_GAP;
+  if (!quotation.gstApplicable) {
+    const noteH = 12;
+    ensureSpace(doc, noteH);
+    doc.font(F.regular).fontSize(7).fillColor(COLORS.label).text("Taxes: Not applicable (non-GST invoice).", rowStart, cy + 4, { width: CONTENT_WIDTH });
+    cy += noteH + 4;
+  }
+
+  doc.y = cy + SECTION_GAP;
 };
 
-const drawPaymentBoxes = (doc, quotation) => {
+/**
+ * Payment schedule: delivery timeline plus the three fixed milestones, each
+ * showing its percentage and exact amount - computed from the grand total so
+ * these figures can never drift from the cost table above or the Payment
+ * Milestones term in the T&Cs.
+ */
+const drawPaymentBoxes = (doc, quotation, milestones) => {
   const boxH = 62;
   ensureSpace(doc, SECTION_TITLE_HEIGHT + boxH + SECTION_GAP);
-  drawSectionTitle(doc, "Payment & Delivery");
+  drawSectionTitle(doc, "Payment Schedule");
   const y0 = doc.y;
-  const boxW = (CONTENT_WIDTH - 24) / 3;
+  const boxW = (CONTENT_WIDTH - 36) / 4;
   const boxes = [
     ["Project Timeline", quotation.projectTimeline || "—"],
-    ["Advance Amount", quotation.advanceAmount ? formatMoney(quotation.advanceAmount) : "—"],
-    ["Payment Terms", quotation.paymentTerms || "—"],
+    ["50% Advance", formatMoney(milestones.advance)],
+    ["30% Development", formatMoney(milestones.development)],
+    ["20% Final Payment", formatMoney(milestones.final)],
   ];
   boxes.forEach(([title, value], i) => {
     const x = MARGIN + i * (boxW + 12);
@@ -501,9 +644,9 @@ const drawTermItem = (doc, item) => {
   doc.y = y + itemH + 2;
 };
 
-const drawTerms = (doc, quotation) => {
+const drawTerms = (doc, quotation, milestones) => {
   drawSectionTitle(doc, "Terms & Conditions");
-  QUOTATION_TERMS.forEach((term) => {
+  buildQuotationTerms(quotation, milestones).forEach((term) => {
     const headingH = doc.font(F.bold).fontSize(TERM_HEADING_FONT).heightOfString(term.heading, { width: CONTENT_WIDTH });
     ensureSpace(doc, headingH + 3);
     const hy = doc.y;
@@ -523,38 +666,38 @@ const drawTerms = (doc, quotation) => {
 };
 
 /**
- * Two-column quotation approval section: company details on the left, a client
- * approval block on the right. Styled to match the existing payment boxes
- * (light fill, thin border, rounded corners) with a vertical divider down the
- * middle.
+ * Two-column acceptance section: Skyntrix's authorized representative on the
+ * left, the client's approval block on the right - both with a name,
+ * signature and date line, styled to match the payment boxes (light fill,
+ * thin border, rounded corners) with a vertical divider down the middle.
  */
 const drawSignature = (doc) => {
   const y = doc.y;
   const boxX = MARGIN;
   const boxW = CONTENT_WIDTH;
   const boxH = SIGNATURE_HEIGHT;
-  const pad = 16;
+  const pad = 14;
   const dividerX = boxX + boxW / 2;
 
   doc.roundedRect(boxX, y, boxW, boxH, 6).fillColor(COLORS.light).fill();
   doc.roundedRect(boxX, y, boxW, boxH, 6).lineWidth(0.8).strokeColor(COLORS.border).stroke();
   doc.moveTo(dividerX, y).lineTo(dividerX, y + boxH).lineWidth(0.8).strokeColor(COLORS.border).stroke();
 
-  // LEFT — COMPANY DETAILS
+  // LEFT — AUTHORIZED REPRESENTATIVE (Skyntrix)
   const lx = boxX + pad;
-  doc.font(F.bold).fontSize(9).fillColor(COLORS.ink).text(COMPANY.name.toUpperCase(), lx, y + pad, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.tagline, lx, y + pad + 15, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.email, lx, y + pad + 42, { lineBreak: false });
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.website, lx, y + pad + 54, { lineBreak: false });
-  doc.link(lx, y + pad + 54, doc.widthOfString(COMPANY.website), doc.currentLineHeight(), COMPANY.website);
-  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("+91 97905 86747 | +91 96002 02825", lx, y + pad + 66, { lineBreak: false });
+  doc.font(F.bold).fontSize(8.5).fillColor(COLORS.primary).text("AUTHORIZED REPRESENTATIVE", lx, y + pad, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text(COMPANY.name, lx, y + pad + 14, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text(`Name: ${COMPANY.founder} (${COMPANY.founderTitle})`, lx, y + pad + 32, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", lx, y + pad + 52, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", lx, y + pad + 72, { lineBreak: false });
 
   // RIGHT — CLIENT APPROVAL
   const rx = dividerX + pad;
   doc.font(F.bold).fontSize(8.5).fillColor(COLORS.primary).text("CLIENT APPROVAL", rx, y + pad, { lineBreak: false });
-  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Name: ______________________", rx, y + pad + 26, { lineBreak: false });
-  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", rx, y + pad + 48, { lineBreak: false });
-  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", rx, y + pad + 70, { lineBreak: false });
+  doc.font(F.regular).fontSize(7.5).fillColor(COLORS.muted).text("Accepted on behalf of the client", rx, y + pad + 14, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Name: ______________________", rx, y + pad + 32, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Signature: __________________", rx, y + pad + 52, { lineBreak: false });
+  doc.font(F.regular).fontSize(8).fillColor(COLORS.ink).text("Date: _______________________", rx, y + pad + 72, { lineBreak: false });
 
   doc.y = y + boxH + 6;
 };
@@ -615,6 +758,16 @@ export const generateQuotationPdf = async (quotation) => {
       stream.on("error", reject);
       doc.on("error", reject);
 
+      // Subtotal, GST (only when explicitly applicable) and the final grand
+      // total are computed once here and threaded through every section below,
+      // so the cost table, payment schedule and T&C milestone figures can
+      // never drift apart.
+      const services = (quotation.services || []).filter((s) => s && s.name);
+      const subtotal = services.length ? services.reduce((a, s) => a + (Number(s.amount) || 0), 0) : Number(quotation.totalAmount) || 0;
+      const gstAmount = quotation.gstApplicable ? Math.round(subtotal * 0.18) : 0;
+      const grandTotal = subtotal + gstAmount;
+      const milestones = computeMilestones(grandTotal);
+
       doc.pipe(stream);
       registerBrandFonts(doc);
       drawHeader(doc, quotation);
@@ -622,10 +775,10 @@ export const generateQuotationPdf = async (quotation) => {
 
       drawInfoCard(doc, quotation);
       drawScope(doc, quotation);
-      drawCostTable(doc, quotation);
-      drawPaymentBoxes(doc, quotation);
+      drawCostTable(doc, quotation, { subtotal, gstAmount, grandTotal });
+      drawPaymentBoxes(doc, quotation, milestones);
 
-      drawTerms(doc, quotation);
+      drawTerms(doc, quotation, milestones);
       ensureSpace(doc, SIGNATURE_HEIGHT);
       drawSignature(doc);
 

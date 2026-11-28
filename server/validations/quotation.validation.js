@@ -1,7 +1,12 @@
 import { body, param, query } from "express-validator";
 import { normalizeMobileNumber } from "../services/whatsapp.service.js";
+import { PROJECT_CATEGORIES } from "../models/Quotation.model.js";
 
 const isMobile = (value) => Boolean(normalizeMobileNumber(value));
+// Standard 15-character GSTIN format (2-digit state code, 10-char PAN, entity
+// code, "Z", checksum). Only enforced when a GST number is actually supplied -
+// GST is never assumed or required.
+const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 const servicesRule = (field = "services") =>
   body(field)
@@ -46,10 +51,18 @@ const commonFields = [
     .isLength({ max: 200 })
     .withMessage("Project name must be 200 characters or fewer"),
   body("projectDescription").optional({ values: "falsy" }).trim().isLength({ max: 5000 }).withMessage("Project description must be 5000 characters or fewer"),
+  body("projectCategory").optional({ values: "falsy" }).isIn(PROJECT_CATEGORIES).withMessage("Invalid project category"),
   servicesRule(),
   body("projectTimeline").optional({ values: "falsy" }).trim().isLength({ max: 300 }).withMessage("Project timeline must be 300 characters or fewer"),
   body("paymentTerms").optional({ values: "falsy" }).trim().isLength({ max: 1000 }).withMessage("Payment terms must be 1000 characters or fewer"),
-  body("advanceAmount").optional({ values: "falsy" }).isFloat({ min: 0 }).withMessage("Advance amount must be a positive number"),
+  body("gstApplicable").optional().isBoolean().withMessage("GST applicable must be true or false"),
+  body("gstNumber")
+    .optional({ values: "falsy" })
+    .trim()
+    .toUpperCase()
+    .matches(GSTIN_PATTERN)
+    .withMessage("Enter a valid 15-character GSTIN"),
+  body("validityDays").optional({ values: "falsy" }).isInt({ min: 1, max: 180 }).withMessage("Validity must be between 1 and 180 days"),
   body("additionalNotes").optional({ values: "falsy" }).trim().isLength({ max: 3000 }).withMessage("Additional notes must be 3000 characters or fewer"),
 ];
 

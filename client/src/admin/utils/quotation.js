@@ -21,6 +21,33 @@ export const SEND_LOG_STATUS_OPTIONS = [
   { value: "failed", label: "Failed" },
 ];
 
+// Mirrors PROJECT_CATEGORY_META in server/services/quotation.service.js so
+// the create/edit form and the PDF generator always agree on the same
+// category list and wording.
+export const PROJECT_CATEGORY_OPTIONS = [
+  { value: "website", label: "Website Development" },
+  { value: "mobile_app", label: "Mobile App Development" },
+  { value: "billing_software", label: "Billing Software" },
+  { value: "crm_erp", label: "CRM / ERP Development" },
+  { value: "digital_marketing", label: "Digital Marketing" },
+  { value: "seo", label: "SEO Services" },
+  { value: "ui_ux", label: "UI/UX Design" },
+  { value: "other", label: "Other IT Services" },
+];
+
+// Fixed milestone split applied to every quotation - mirrors MILESTONE_SPLIT /
+// computeMilestones() in server/services/quotation.service.js so the create
+// form can preview the exact same numbers the generated PDF will show.
+export const MILESTONE_SPLIT = { advance: 0.5, development: 0.3, final: 0.2 };
+
+export const computeMilestones = (totalAmount) => {
+  const total = Math.max(0, Number(totalAmount) || 0);
+  const advance = Math.round(total * MILESTONE_SPLIT.advance);
+  const development = Math.round(total * MILESTONE_SPLIT.development);
+  const final = total - advance - development;
+  return { advance, development, final, total };
+};
+
 export const QUOTATION_SORT_OPTIONS = [
   { value: "createdAt:desc", label: "Newest first" },
   { value: "createdAt:asc", label: "Oldest first" },
